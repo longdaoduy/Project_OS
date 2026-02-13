@@ -1,5 +1,4 @@
 using System;
-
 namespace Dl
 {
     public class Queue
@@ -25,7 +24,7 @@ namespace Dl
         public string queueID { get; set; }
         public bool isCompleted { get; set; } = false;
         public int completionTime { get; set; }
-        public int tunrAroundTime { get; set; }
+        public int turnAroundTime { get; set; }
         public int waitingTime { get; set; }
 
         public Process(string pid, int at, int bt, string qid)
