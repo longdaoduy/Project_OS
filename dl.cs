@@ -43,6 +43,7 @@ namespace Dl
         public int turnAroundTime { get; set; }
         public int waitingTime { get; set; }
 
+
         public Process(string pid, int at, int bt, string qid)
         {
             processID = pid;
@@ -50,6 +51,13 @@ namespace Dl
             burstTime = bt;
             remainingTime = bt;
             queueID = qid;
+            isCompleted = false;
+        }
+
+        public void caculateMetrics()
+        {
+            turnAroundTime = completionTime - arrivalTime;
+            waitingTime = turnAroundTime - burstTime;
         }
     }
 }
