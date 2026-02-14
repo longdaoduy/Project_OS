@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+
 using System.Data;
 namespace Dl
 {
@@ -8,7 +10,6 @@ namespace Dl
         public int timeSlice;
         public string schedulingPolicy;
         public List<Process> readyQueue = new List<Process>();
-
         public Queue(string id, int ts, string sp)
         {
             queueID = id;
@@ -40,8 +41,12 @@ namespace Dl
         public string queueID { get; set; }
         public bool isCompleted { get; set; } = false;
         public int completionTime { get; set; }
+        public int turnaroundTime { get; set; }
         public int turnAroundTime { get; set; }
         public int waitingTime { get; set; }
+        public int remainingBurstTime { get; set; }
+        public int startTime { get; set; }
+        public int endTime { get; set; }
 
 
         public Process(string pid, int at, int bt, string qid)
@@ -51,6 +56,102 @@ namespace Dl
             burstTime = bt;
             remainingTime = bt;
             queueID = qid;
+            remainingBurstTime = bt;
+        }
+    }
+    public class SchedulingResult
+    {
+        public List<Process> processes { get; set; }
+        public Queue queue { get; set; }
+        public SchedulingResult(List<Process> p, Queue q)
+        {
+            processes = p;
+            queue = q;
+        }
+        public void SRTN()
+        {
+            int completedProcesses = 0;
+            int currentTime = 0;
+            int i = 0;
+            Process currentProcess = null;
+            while (completedProcesses < processes.Count)
+            {
+                if (currentTime == 0)
+                {
+                    queue.readyQueue.Add(processes[i]);
+                    i++;
+                }
+                else if (i < processes.Count && processes[i].arrivalTime == currentTime)
+                {
+                    queue.readyQueue.Add(processes[i]);
+                    queue.readyQueue.Sort((p1, p2) => p1.burstTime.CompareTo(p2.burstTime));
+                    i++;
+                }
+
+                Process nextProcess = queue.readyQueue[0];
+
+                if (currentProcess != nextProcess)
+                {
+                    if (currentProcess != null)
+                    {
+                        currentProcess.endTime = currentTime;
+                    }
+                    currentProcess = nextProcess;
+                    currentProcess.startTime = currentTime;
+                }
+
+                currentProcess.remainingBurstTime--;
+                currentTime++;
+
+                if (currentProcess.remainingBurstTime == 0)
+                {
+                    currentProcess.isCompleted = true;
+                    currentProcess.completionTime = currentTime;
+                    currentProcess.turnaroundTime = currentTime - currentProcess.arrivalTime;
+                    currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
+                    queue.readyQueue.Remove(currentProcess);
+                    completedProcesses++;
+                }
+            }
+        }
+    }
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            // Nạp dữ liệu mô phỏng từ tài liệu: P1(0,24), P2(1,5), P3(2,3)
+            List<Process> pList = new List<Process>
+            {
+                new Process("P1", 0, 24, "Q1"),
+                new Process("P2", 1, 5, "Q1"),
+                new Process("P3", 2, 3, "Q1")
+            };
+
+            Queue q = new Queue("Q1", 0, "SRTN");
+            SchedulingResult simulator = new SchedulingResult(pList, q);
+
+            simulator.SRTN();
+
+            // In bảng kết quả
+            Console.WriteLine("Process\tArrival\tBurst\tTT\tWT");
+            Console.WriteLine("-------------------------------------------");
+
+            // Sắp xếp lại theo ID để in cho đẹp
+            pList.Sort((a, b) => a.processID.CompareTo(b.processID));
+
+            double totalWT = 0, totalTT = 0;
+            foreach (var p in pList)
+            {
+                Console.WriteLine($"{p.processID}\t{p.arrivalTime}\t{p.burstTime}\t{p.turnaroundTime}\t{p.waitingTime}");
+                totalWT += p.waitingTime;
+                totalTT += p.turnaroundTime;
+            }
+
+            Console.WriteLine("-------------------------------------------");
+            Console.WriteLine($"AVG Turnaround Time: {totalTT / pList.Count:F2}");
+            Console.WriteLine($"AVG Waiting Time: {totalWT / pList.Count:F2}");
+
+            Console.ReadLine();
         }
 
         public void caculateMetrics()
