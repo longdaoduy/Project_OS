@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 namespace Dl
 {
     public class Queue
@@ -14,6 +15,20 @@ namespace Dl
             timeSlice = ts;
             schedulingPolicy = sp;
         }
+        // sjf
+        public Process getNextProcessSJF()
+        {
+            if (readyQueue.Count == 0) return null;
+            Process shortestJob = readyQueue[0];
+            foreach (Process p in readyQueue)
+            {
+                if (p.burstTime < shortestJob.burstTime)
+                {
+                    shortestJob = p;
+                }
+            }
+            return shortestJob;
+        }
     }
 
     public class Process
@@ -21,6 +36,7 @@ namespace Dl
         public string processID { get; set; }
         public int arrivalTime { get; set; }
         public int burstTime { get; set; }
+        public int remainingTime { get; set; }
         public string queueID { get; set; }
         public bool isCompleted { get; set; } = false;
         public int completionTime { get; set; }
@@ -32,6 +48,7 @@ namespace Dl
             processID = pid;
             arrivalTime = at;
             burstTime = bt;
+            remainingTime = bt;
             queueID = qid;
         }
     }
