@@ -51,7 +51,6 @@ namespace Dl
             burstTime = bt;
             remainingTime = bt;
             queueID = qid;
-            isCompleted = false;
         }
 
         public void caculateMetrics()
