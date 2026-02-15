@@ -56,6 +56,11 @@ namespace Dl
             remainingTime = bt;
             queueID = qid;
         }
+        public void caculateMetrics()
+        {
+            turnaroundTime = completionTime - arrivalTime;
+            waitingTime = turnaroundTime - burstTime;
+        }
     }
     public class SchedulingResult
     {
@@ -82,7 +87,7 @@ namespace Dl
                 else if (i < processes.Count && processes[i].arrivalTime == currentTime)
                 {
                     queue.readyQueue.Add(processes[i]);
-                    queue.readyQueue.Sort((p1, p2) => p1.burstTime.CompareTo(p2.burstTime));
+                    queue.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
                     i++;
                 }
 
@@ -105,8 +110,7 @@ namespace Dl
                 {
                     currentProcess.isCompleted = true;
                     currentProcess.completionTime = currentTime;
-                    currentProcess.turnaroundTime = currentTime - currentProcess.arrivalTime;
-                    currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
+                    currentProcess.caculateMetrics();
                     queue.readyQueue.Remove(currentProcess);
                     completedProcesses++;
                 }
@@ -144,8 +148,7 @@ namespace Dl
                 currentProcess.endTime = currentTime;
                 currentProcess.isCompleted = true;
                 currentProcess.completionTime = currentTime;
-                currentProcess.turnaroundTime = currentProcess.completionTime - currentProcess.arrivalTime;
-                currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
+                currentProcess.caculateMetrics();
 
                 // Xoa tien trinh da hoan thanh khoi ready queue va tang bien dem
                 queue.readyQueue.Remove(currentProcess);
@@ -192,10 +195,5 @@ namespace Dl
             Console.ReadLine();
         }
 
-        public void caculateMetrics()
-        {
-            turnaroundTime = completionTime - arrivalTime;
-            waitingTime = turnaroundTime - burstTime;
-        }
     }
 }
