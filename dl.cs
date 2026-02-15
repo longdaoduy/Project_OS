@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 using System.Data;
+using System.Xml.Linq;
 namespace Dl
 {
     public class Queue
@@ -109,6 +110,46 @@ namespace Dl
                     queue.readyQueue.Remove(currentProcess);
                     completedProcesses++;
                 }
+            }
+        }
+        public void SJF()
+        {
+            int completedProcesses = 0;
+            int currentTime = 0;
+            int i = 0;
+            Process currentProcess = null;
+            // sap xep danh sach process theo arrival time
+            processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
+
+            while (completedProcesses < processes.Count)
+            {
+                // them tat ca process da den vao ready queue
+                while (i < processes.Count && processes[i].arrivalTime <= currentTime)
+                {
+                    queue.readyQueue.Add(processes[i]);
+                    i++;
+                }
+                // neu khong co tien trinh nao trong ready queue thi tang thoi gian
+                if (queue.readyQueue.Count == 0)
+                {
+                    currentTime++;
+                    continue;
+                }
+                // Lay tien trinh co burst time ngan nhat
+                currentProcess = queue.getNextProcessSJF();
+                currentProcess.startTime = currentTime;
+                currentTime += currentProcess.burstTime;
+
+                // cap nhat thong tin cho tien trinh da hoan thanh
+                currentProcess.endTime = currentTime;
+                currentProcess.isCompleted = true;
+                currentProcess.completionTime = currentTime;
+                currentProcess.turnaroundTime = currentProcess.completionTime - currentProcess.arrivalTime;
+                currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
+
+                // Xoa tien trinh da hoan thanh khoi ready queue va tang bien dem
+                queue.readyQueue.Remove(currentProcess);
+                completedProcesses++;
             }
         }
     }
