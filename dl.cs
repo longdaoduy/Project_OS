@@ -42,9 +42,7 @@ namespace Dl
         public bool isCompleted { get; set; } = false;
         public int completionTime { get; set; }
         public int turnaroundTime { get; set; }
-        public int turnAroundTime { get; set; }
         public int waitingTime { get; set; }
-        public int remainingBurstTime { get; set; }
         public int startTime { get; set; }
         public int endTime { get; set; }
 
@@ -56,7 +54,6 @@ namespace Dl
             burstTime = bt;
             remainingTime = bt;
             queueID = qid;
-            remainingBurstTime = bt;
         }
     }
     public class SchedulingResult
@@ -100,10 +97,10 @@ namespace Dl
                     currentProcess.startTime = currentTime;
                 }
 
-                currentProcess.remainingBurstTime--;
+                currentProcess.remainingTime--;
                 currentTime++;
 
-                if (currentProcess.remainingBurstTime == 0)
+                if (currentProcess.remainingTime == 0)
                 {
                     currentProcess.isCompleted = true;
                     currentProcess.completionTime = currentTime;
@@ -156,8 +153,8 @@ namespace Dl
 
         public void caculateMetrics()
         {
-            turnAroundTime = completionTime - arrivalTime;
-            waitingTime = turnAroundTime - burstTime;
+            turnaroundTime = completionTime - arrivalTime;
+            waitingTime = turnaroundTime - burstTime;
         }
     }
 }
