@@ -1,7 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-
 using System.Data;
+using System.IO;
 using System.Xml.Linq;
 namespace Dl
 {
@@ -10,12 +11,14 @@ namespace Dl
         public string queueID;
         public int timeSlice;
         public string schedulingPolicy;
+        public int remainingTime;
         public List<Process> readyQueue = new List<Process>();
         public Queue(string id, int ts, string sp)
         {
             queueID = id;
             timeSlice = ts;
             schedulingPolicy = sp;
+            remainingTime = ts;
         }
         // sjf
         public Process getNextProcessSJF()
@@ -47,7 +50,6 @@ namespace Dl
         public int startTime { get; set; }
         public int endTime { get; set; }
 
-
         public Process(string pid, int at, int bt, string qid)
         {
             processID = pid;
@@ -65,45 +67,62 @@ namespace Dl
     public class SchedulingResult
     {
         public List<Process> processes { get; set; }
-        public Queue queue { get; set; }
-        public SchedulingResult(List<Process> p, Queue q)
+        public List<Queue> queues { get; set; }
+        public SchedulingResult(List<Process> p, List<Queue> q)
         {
             processes = p;
-            queue = q;
+            queues = q;
         }
         public void SRTN()
         {
             int completedProcesses = 0;
             int currentTime = 0;
             int i = 0;
+            int queueIndex = 0;
             Process currentProcess = null;
+            Queue currentQueue = queues[queueIndex];
+            processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
             while (completedProcesses < processes.Count)
             {
-                if (currentTime == 0)
+                while (i < processes.Count && processes[i].arrivalTime == currentTime)
                 {
-                    queue.readyQueue.Add(processes[i]);
-                    i++;
-                }
-                else if (i < processes.Count && processes[i].arrivalTime == currentTime)
-                {
-                    queue.readyQueue.Add(processes[i]);
-                    queue.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
-                    i++;
+                    foreach (Queue q in queues)
+                    {
+                        if (q.queueID == processes[i].queueID)
+                        {
+                            q.readyQueue.Add(processes[i]);
+                            q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
+                            i++;
+                            break;
+                        }
+                    }
                 }
 
-                Process nextProcess = queue.readyQueue[0];
+                if (currentQueue.remainingTime == 0)
+                {
+                    currentQueue.remainingTime = currentQueue.timeSlice;
+                    if (currentProcess != null) currentProcess.endTime = currentTime;
+                    queueIndex = (queueIndex + 1) % queues.Count;
+                    currentQueue = queues[queueIndex];
+                }
+
+                if (currentQueue.readyQueue.Count == 0)
+                {
+                    currentQueue.remainingTime = 0;
+                    continue;
+                }
+
+                Process nextProcess = currentQueue.readyQueue[0];
 
                 if (currentProcess != nextProcess)
                 {
-                    if (currentProcess != null)
-                    {
-                        currentProcess.endTime = currentTime;
-                    }
+                    if (currentProcess != null) currentProcess.endTime = currentTime;
                     currentProcess = nextProcess;
                     currentProcess.startTime = currentTime;
                 }
 
                 currentProcess.remainingTime--;
+                currentQueue.remainingTime--;
                 currentTime++;
 
                 if (currentProcess.remainingTime == 0)
@@ -111,7 +130,7 @@ namespace Dl
                     currentProcess.isCompleted = true;
                     currentProcess.completionTime = currentTime;
                     currentProcess.caculateMetrics();
-                    queue.readyQueue.Remove(currentProcess);
+                    currentQueue.readyQueue.Remove(currentProcess);
                     completedProcesses++;
                 }
             }
@@ -122,6 +141,7 @@ namespace Dl
             int currentTime = 0;
             int i = 0;
             Process currentProcess = null;
+            Queue currentQueue = queues[0];
             // sap xep danh sach process theo arrival time
             processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
 
@@ -130,17 +150,17 @@ namespace Dl
                 // them tat ca process da den vao ready queue
                 while (i < processes.Count && processes[i].arrivalTime <= currentTime)
                 {
-                    queue.readyQueue.Add(processes[i]);
+                    currentQueue.readyQueue.Add(processes[i]);
                     i++;
                 }
                 // neu khong co tien trinh nao trong ready queue thi tang thoi gian
-                if (queue.readyQueue.Count == 0)
+                if (currentQueue.readyQueue.Count == 0)
                 {
                     currentTime++;
                     continue;
                 }
                 // Lay tien trinh co burst time ngan nhat
-                currentProcess = queue.getNextProcessSJF();
+                currentProcess = currentQueue.getNextProcessSJF();
                 currentProcess.startTime = currentTime;
                 currentTime += currentProcess.burstTime;
 
@@ -151,49 +171,106 @@ namespace Dl
                 currentProcess.caculateMetrics();
 
                 // Xoa tien trinh da hoan thanh khoi ready queue va tang bien dem
-                queue.readyQueue.Remove(currentProcess);
+                currentQueue.readyQueue.Remove(currentProcess);
                 completedProcesses++;
             }
+        }
+    }
+    class ReadFile
+    {
+        public void readDataFromFile(string fileName, SchedulingResult simulator)
+        {
+            if (!File.Exists(fileName))
+            {
+                Console.WriteLine("File not found!");
+                return;
+            }
+
+            string[] lines = File.ReadAllLines(fileName);
+            int i = 0;
+            int qCount = int.Parse(lines[i].Trim());
+            i++;
+            for (int j = 0; j < qCount; j++)
+            {
+                string[] queueData = lines[i].Trim().Split(' ');
+                string queueID = queueData[0];
+                int timeSlice = int.Parse(queueData[1]);
+                string schedulingPolicy = queueData[2];
+                Queue q = new Queue(queueID, timeSlice, schedulingPolicy);
+                simulator.queues.Add(q);
+                i++;
+            }
+            while (i < lines.Length)
+            {
+                string[] processData = lines[i].Trim().Split(' ');
+                string processID = processData[0];
+                int arrivalTime = int.Parse(processData[1]);
+                int burstTime = int.Parse(processData[2]);
+                string queueID = processData[3];
+                Process p = new Process(processID, arrivalTime, burstTime, queueID);
+                simulator.processes.Add(p);
+                i++;
+            }
+
         }
     }
     class Program
     {
         static void Main(string[] args)
         {
-            // Nạp dữ liệu mô phỏng từ tài liệu: P1(0,24), P2(1,5), P3(2,3)
-            List<Process> pList = new List<Process>
+            // 1. Khởi tạo danh sách rỗng để chuẩn bị nhận dữ liệu từ file
+            List<Process> pList = new List<Process>();
+            List<Queue> qList = new List<Queue>();
+
+            // 2. Tạo đối tượng Simulator (SchedulingResult)
+            // Lưu ý: Đảm bảo constructor của SchedulingResult nhận (List<Process>, List<Queue>)
+            SchedulingResult simulator = new SchedulingResult(pList, qList);
+
+            // 3. Đọc dữ liệu từ file input.txt
+            ReadFile reader = new ReadFile();
+            string inputFileName = "input.txt"; // Hoặc lấy từ args[0] theo yêu cầu Lab 
+            
+            Console.WriteLine($"--- Dang doc du lieu tu file: {inputFileName} ---");
+            reader.readDataFromFile(inputFileName, simulator);
+
+            // Kiểm tra nếu dữ liệu rỗng
+            if (simulator.processes.Count == 0 || simulator.queues.Count == 0)
             {
-                new Process("P1", 0, 24, "Q1"),
-                new Process("P2", 1, 5, "Q1"),
-                new Process("P3", 2, 3, "Q1")
-            };
+                Console.WriteLine("Loi: Khong co du lieu de mo phong.");
+                return;
+            }
 
-            Queue q = new Queue("Q1", 0, "SRTN");
-            SchedulingResult simulator = new SchedulingResult(pList, q);
+            // 4. Thực thi thuật toán điều phối
+            Console.WriteLine("--- Bat dau dieu phoi Multi-level Queue (SRTN/SJF) ---");
+            simulator.SRTN(); // Gọi hàm SRTN đã fix logic chuyển queue của bạn
 
-            simulator.SRTN();
+            [cite_start]// 5. In kết quả thống kê theo mẫu tài liệu [cite: 108, 109]
+            Console.WriteLine("\n=== PROCESS STATISTICS ===");
+            Console.WriteLine("-----------------------------------------------------------------------------");
+            Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}", 
+                "Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting");
+            Console.WriteLine("-----------------------------------------------------------------------------");
 
-            // In bảng kết quả
-            Console.WriteLine("Process\tArrival\tBurst\tTT\tWT");
-            Console.WriteLine("-------------------------------------------");
-
-            // Sắp xếp lại theo ID để in cho đẹp
-            pList.Sort((a, b) => a.processID.CompareTo(b.processID));
+            // Sắp xếp theo tên Process để in kết quả dễ nhìn
+            simulator.processes.Sort((a, b) => a.processID.CompareTo(b.processID));
 
             double totalWT = 0, totalTT = 0;
-            foreach (var p in pList)
+            foreach (var p in simulator.processes)
             {
-                Console.WriteLine($"{p.processID}\t{p.arrivalTime}\t{p.burstTime}\t{p.turnaroundTime}\t{p.waitingTime}");
+                Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}", 
+                    p.processID, p.arrivalTime, p.burstTime, p.completionTime, p.turnaroundTime, p.waitingTime);
+                
                 totalWT += p.waitingTime;
                 totalTT += p.turnaroundTime;
             }
 
-            Console.WriteLine("-------------------------------------------");
-            Console.WriteLine($"AVG Turnaround Time: {totalTT / pList.Count:F2}");
-            Console.WriteLine($"AVG Waiting Time: {totalWT / pList.Count:F2}");
+            int count = simulator.processes.Count;
+            Console.WriteLine("-----------------------------------------------------------------------------");
+            Console.WriteLine($"Average Turnaround Time: {totalTT / count:F1}"); // In 1 chữ số thập phân [cite: 111]
+            Console.WriteLine($"Average Waiting Time:    {totalWT / count:F1}"); // [cite: 112]
 
-            Console.ReadLine();
+            Console.WriteLine("\nNhan phim bat ky de ket thuc...");
+            Console.ReadKey();
         }
-
     }
 }
