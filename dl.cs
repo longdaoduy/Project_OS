@@ -20,8 +20,16 @@ namespace Dl
             schedulingPolicy = sp;
             remainingTime = ts;
         }
+        // class lưu vết để in biểu đồ
+        public class executionLog
+        {
+            public int startTime { get; set; }
+            public int endTime { get; set; }
+            public string processID { get; set; } = "";
+            public string queueID { get; set; } = "";
+        }
         // sjf
-        public Process getNextProcessSJF()
+        public Process? getNextProcessSJF()
         {
             if (readyQueue.Count == 0) return null;
             Process shortestJob = readyQueue[0];
@@ -68,10 +76,26 @@ namespace Dl
     {
         public List<Process> processes { get; set; }
         public List<Queue> queues { get; set; }
+        public List<Queue.executionLog> logs = new List<Queue.executionLog>();
         public SchedulingResult(List<Process> p, List<Queue> q)
         {
             processes = p;
             queues = q;
+        }
+        // gộp các mốc thời gian của cùng một process (VD: [36-39] và [39-40] thành [36-40])
+        private void AddLog(int start, int end, string qID, string pID)
+        {
+            if (start == end) return;
+            if (logs.Count > 0)
+            {
+                var lastLog = logs[logs.Count - 1];
+                if (lastLog.endTime == start && lastLog.queueID == qID && lastLog.processID == pID)
+                {
+                    lastLog.endTime = end;
+                    return;
+                }
+            }
+            logs.Add(new Queue.executionLog { startTime = start, endTime = end, queueID = qID, processID = pID });
         }
         public void SRTN()
         {
@@ -79,7 +103,7 @@ namespace Dl
             int currentTime = 0;
             int i = 0;
             int queueIndex = 0;
-            Process currentProcess = null;
+            Process? currentProcess = null;
             Queue currentQueue = queues[queueIndex];
             processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
             while (completedProcesses < processes.Count)
@@ -108,7 +132,20 @@ namespace Dl
 
                 if (currentQueue.readyQueue.Count == 0)
                 {
-                    currentQueue.remainingTime = 0;
+                    // check tất cả hàng đợi có rỗng không
+                    bool allEmpty = true;
+                    foreach (var q in queues)
+                    {
+                        if (q.readyQueue.Count > 0) { allEmpty = false; break; }
+                    }
+                    if (allEmpty)
+                    {
+                        currentTime++; // CPU nhàn rỗi, tăng thời gian lên
+                    }
+                    else
+                    {
+                        currentQueue.remainingTime = 0; // Bỏ qua lượt của queue hiện tại
+                    }
                     continue;
                 }
 
@@ -121,9 +158,13 @@ namespace Dl
                     currentProcess.startTime = currentTime;
                 }
 
+                int prevTime = currentTime;
                 currentProcess.remainingTime--;
                 currentQueue.remainingTime--;
                 currentTime++;
+
+
+                AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
 
                 if (currentProcess.remainingTime == 0)
                 {
@@ -140,7 +181,7 @@ namespace Dl
             int completedProcesses = 0;
             int currentTime = 0;
             int i = 0;
-            Process currentProcess = null;
+            Process? currentProcess = null;
             Queue currentQueue = queues[0];
             // sap xep danh sach process theo arrival time
             processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
@@ -161,21 +202,37 @@ namespace Dl
                 }
                 // Lay tien trinh co burst time ngan nhat
                 currentProcess = currentQueue.getNextProcessSJF();
-                currentProcess.startTime = currentTime;
-                currentTime += currentProcess.burstTime;
+                // Check null
+                if (currentProcess != null)
+                {
+                    currentProcess.startTime = currentTime;
+                    currentTime += currentProcess.burstTime;
 
-                // cap nhat thong tin cho tien trinh da hoan thanh
-                currentProcess.endTime = currentTime;
-                currentProcess.isCompleted = true;
-                currentProcess.completionTime = currentTime;
-                currentProcess.caculateMetrics();
+                    AddLog(currentProcess.startTime, currentTime, currentQueue.queueID, currentProcess.processID);
 
-                // Xoa tien trinh da hoan thanh khoi ready queue va tang bien dem
-                currentQueue.readyQueue.Remove(currentProcess);
-                completedProcesses++;
+                    currentProcess.endTime = currentTime;
+                    currentProcess.isCompleted = true;
+                    currentProcess.completionTime = currentTime;
+                    currentProcess.caculateMetrics();
+
+                    currentQueue.readyQueue.Remove(currentProcess);
+                    completedProcesses++;
+                }
             }
         }
+        public void PrintSchedulingDiagram()
+        {
+            Console.WriteLine("================ CPU SCHEDULING DIAGRAM ================\n");
+            Console.WriteLine("{0,-18} {1,-10} {2,-10}", "[Start - End]", "Queue", "Process");
+            Console.WriteLine("---------------------------------------------------------");
+            foreach (var log in logs)
+            {
+                Console.WriteLine("{0,-18} {1,-10} {2,-10}", $"[{log.startTime} - {log.endTime}]", log.queueID, log.processID);
+            }
+            Console.WriteLine("\n");
+        }
     }
+
     class ReadFile
     {
         public void readDataFromFile(string fileName, SchedulingResult simulator)
@@ -229,7 +286,7 @@ namespace Dl
             // 3. Đọc dữ liệu từ file input.txt
             ReadFile reader = new ReadFile();
             string inputFileName = "input.txt"; // Hoặc lấy từ args[0] theo yêu cầu Lab 
-            
+
             Console.WriteLine($"--- Dang doc du lieu tu file: {inputFileName} ---");
             reader.readDataFromFile(inputFileName, simulator);
 
@@ -243,11 +300,12 @@ namespace Dl
             // 4. Thực thi thuật toán điều phối
             Console.WriteLine("--- Bat dau dieu phoi Multi-level Queue (SRTN/SJF) ---");
             simulator.SRTN(); // Gọi hàm SRTN đã fix logic chuyển queue của bạn
+            simulator.PrintSchedulingDiagram(); // Gọi hàm in biểu đồ
 
-            [cite_start]// 5. In kết quả thống kê theo mẫu tài liệu [cite: 108, 109]
+            // 5. In kết quả thống kê theo mẫu tài liệu [cite: 108, 109]
             Console.WriteLine("\n=== PROCESS STATISTICS ===");
             Console.WriteLine("-----------------------------------------------------------------------------");
-            Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}", 
+            Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}",
                 "Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting");
             Console.WriteLine("-----------------------------------------------------------------------------");
 
@@ -257,9 +315,9 @@ namespace Dl
             double totalWT = 0, totalTT = 0;
             foreach (var p in simulator.processes)
             {
-                Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}", 
+                Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}",
                     p.processID, p.arrivalTime, p.burstTime, p.completionTime, p.turnaroundTime, p.waitingTime);
-                
+
                 totalWT += p.waitingTime;
                 totalTT += p.turnaroundTime;
             }
@@ -274,3 +332,110 @@ namespace Dl
         }
     }
 }
+// public void RunScheduling()
+// {
+//     int completedProcesses = 0;
+//     int currentTime = 0;
+//     int i = 0;
+//     int queueIndex = 0;
+//     Process? currentProcess = null;
+//     processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
+//     while (completedProcesses < processes.Count)
+//     {
+//         // Thêm tiến trình vào các hàng đợi tương ứng khi đến giờ
+//         while (i < processes.Count && processes[i].arrivalTime <= currentTime)
+//         {
+//             foreach (Queue q in queues)
+//             {
+//                 if (q.queueID == processes[i].queueID)
+//                 {
+//                     q.readyQueue.Add(processes[i]);
+//                     // Nếu queue policy là SRTN, sắp xếp lại theo remaining time
+//                     if (q.schedulingPolicy == "SRTN")
+//                     {
+//                         q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
+//                     }
+//                     break;
+//                 }
+//             }
+//             i++;
+//         }
+
+//         Queue currentQueue = queues[queueIndex];
+//         // Nếu queue hiện tại rỗng, kiểm tra xem có nên tăng thời gian hay chuyển queue
+//         if (currentQueue.readyQueue.Count == 0)
+//         {
+//             bool allEmpty = true;
+//             foreach (var q in queues)
+//             {
+//                 if (q.readyQueue.Count > 0) { allEmpty = false; break; }
+//             }
+//             if (allEmpty)
+//             {
+//                 currentTime++; // Tất cả queue đều rỗng, tăng thời gian lên chờ process mới
+//             }
+//             else
+//             {
+//                 // Chuyển sang queue tiếp theo (bỏ qua queue rỗng)
+//                 currentQueue.remainingTime = 0;
+//                 queueIndex = (queueIndex + 1) % queues.Count;
+//             }
+//             continue;
+//         }
+
+//         // Xử lý dựa theo Policy của Queue
+//         if (currentQueue.schedulingPolicy == "SRTN")
+//         {
+//             // Chuyển queue nếu queue hiện tại hết timeSlice
+//             if (currentQueue.remainingTime == 0)
+//             {
+//                 currentQueue.remainingTime = currentQueue.timeSlice;
+//                 if (currentProcess != null) currentProcess.endTime = currentTime;
+//                 queueIndex = (queueIndex + 1) % queues.Count;
+//                 continue;
+//             }
+
+//             Process nextProcess = currentQueue.readyQueue[0];
+
+//             if (currentProcess != nextProcess)
+//             {
+//                 if (currentProcess != null) currentProcess.endTime = currentTime;
+//                 currentProcess = nextProcess;
+//                 currentProcess.startTime = currentTime;
+//             }
+//             int prevTime = currentTime;
+//             currentProcess.remainingTime--;
+//             currentQueue.remainingTime--;
+//             currentTime++;
+//             AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
+//             if (currentProcess.remainingTime == 0)
+//             {
+//                 currentProcess.isCompleted = true;
+//                 currentProcess.completionTime = currentTime;
+//                 currentProcess.calculateMetrics();
+//                 currentQueue.readyQueue.Remove(currentProcess);
+//                 completedProcesses++;
+//             }
+//         }
+//         else if (currentQueue.schedulingPolicy == "SJF")
+//         {
+//             currentProcess = currentQueue.getNextProcessSJF();
+//             if (currentProcess != null)
+//             {
+//                 currentProcess.startTime = currentTime;
+//                 currentTime += currentProcess.burstTime; // SJF nhảy cóc thời gian
+
+//                 AddLog(currentProcess.startTime, currentTime, currentQueue.queueID, currentProcess.processID);
+
+//                 currentProcess.endTime = currentTime;
+//                 currentProcess.isCompleted = true;
+//                 currentProcess.completionTime = currentTime;
+//                 currentProcess.calculateMetrics();
+
+//                 currentQueue.readyQueue.Remove(currentProcess);
+//                 completedProcesses++;
+//                 queueIndex = (queueIndex + 1) % queues.Count; // Thực thi xong 1 process thì xoay vòng queue
+//             }
+//         }
+//     }
+// }
