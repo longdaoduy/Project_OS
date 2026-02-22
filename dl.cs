@@ -66,7 +66,7 @@ namespace Dl
             remainingTime = bt;
             queueID = qid;
         }
-        public void caculateMetrics()
+        public void calculateMetrics()
         {
             turnaroundTime = completionTime - arrivalTime;
             waitingTime = turnaroundTime - burstTime;
@@ -170,7 +170,7 @@ namespace Dl
                 {
                     currentProcess.isCompleted = true;
                     currentProcess.completionTime = currentTime;
-                    currentProcess.caculateMetrics();
+                    currentProcess.calculateMetrics();
                     currentQueue.readyQueue.Remove(currentProcess);
                     completedProcesses++;
                 }
@@ -213,10 +213,117 @@ namespace Dl
                     currentProcess.endTime = currentTime;
                     currentProcess.isCompleted = true;
                     currentProcess.completionTime = currentTime;
-                    currentProcess.caculateMetrics();
+                    currentProcess.calculateMetrics();
 
                     currentQueue.readyQueue.Remove(currentProcess);
                     completedProcesses++;
+                }
+            }
+        }
+        public void RunScheduling()
+        {
+            int completedProcesses = 0;
+            int currentTime = 0;
+            int i = 0;
+            int queueIndex = 0;
+            Process? currentProcess = null;
+            processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
+            while (completedProcesses < processes.Count)
+            {
+                // Thêm tiến trình vào các hàng đợi tương ứng khi đến giờ
+                while (i < processes.Count && processes[i].arrivalTime <= currentTime)
+                {
+                    foreach (Queue q in queues)
+                    {
+                        if (q.queueID == processes[i].queueID)
+                        {
+                            q.readyQueue.Add(processes[i]);
+                            // Nếu queue policy là SRTN, sắp xếp lại theo remaining time
+                            if (q.schedulingPolicy == "SRTN")
+                            {
+                                q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
+                            }
+                            break;
+                        }
+                    }
+                    i++;
+                }
+
+                Queue currentQueue = queues[queueIndex];
+                // Nếu queue hiện tại rỗng, kiểm tra xem có nên tăng thời gian hay chuyển queue
+                if (currentQueue.readyQueue.Count == 0)
+                {
+                    bool allEmpty = true;
+                    foreach (var q in queues)
+                    {
+                        if (q.readyQueue.Count > 0) { allEmpty = false; break; }
+                    }
+                    if (allEmpty)
+                    {
+                        currentTime++; // Tất cả queue đều rỗng, tăng thời gian lên chờ process mới
+                    }
+                    else
+                    {
+                        // Chuyển sang queue tiếp theo (bỏ qua queue rỗng)
+                        currentQueue.remainingTime = 0;
+                        queueIndex = (queueIndex + 1) % queues.Count;
+                    }
+                    continue;
+                }
+
+                // Xử lý dựa theo Policy của Queue
+                if (currentQueue.schedulingPolicy == "SRTN")
+                {
+                    // Chuyển queue nếu queue hiện tại hết timeSlice
+                    if (currentQueue.remainingTime == 0)
+                    {
+                        currentQueue.remainingTime = currentQueue.timeSlice;
+                        if (currentProcess != null) currentProcess.endTime = currentTime;
+                        queueIndex = (queueIndex + 1) % queues.Count;
+                        continue;
+                    }
+
+                    Process nextProcess = currentQueue.readyQueue[0];
+
+                    if (currentProcess != nextProcess)
+                    {
+                        if (currentProcess != null) currentProcess.endTime = currentTime;
+                        currentProcess = nextProcess;
+                        currentProcess.startTime = currentTime;
+                    }
+                    int prevTime = currentTime;
+                    currentProcess.remainingTime--;
+                    currentQueue.remainingTime--;
+                    currentTime++;
+                    AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
+                    if (currentProcess.remainingTime == 0)
+                    {
+                        currentProcess.isCompleted = true;
+                        currentProcess.completionTime = currentTime;
+                        currentProcess.calculateMetrics();
+                        currentQueue.readyQueue.Remove(currentProcess);
+                        completedProcesses++;
+                    }
+                }
+                else if (currentQueue.schedulingPolicy == "SJF")
+                {
+                    currentProcess = currentQueue.getNextProcessSJF();
+                    if (currentProcess != null)
+                    {
+                        currentProcess.startTime = currentTime;
+                        currentTime += currentProcess.burstTime; // SJF nhảy cóc thời gian
+
+                        AddLog(currentProcess.startTime, currentTime, currentQueue.queueID, currentProcess.processID);
+
+                        currentProcess.endTime = currentTime;
+                        currentProcess.isCompleted = true;
+                        currentProcess.completionTime = currentTime;
+                        currentProcess.calculateMetrics();
+
+                        currentQueue.readyQueue.Remove(currentProcess);
+                        completedProcesses++;
+                        queueIndex = (queueIndex + 1) % queues.Count; // Thực thi xong 1 process thì xoay vòng queue
+                    }
                 }
             }
         }
@@ -299,7 +406,7 @@ namespace Dl
 
             // 4. Thực thi thuật toán điều phối
             Console.WriteLine("--- Bat dau dieu phoi Multi-level Queue (SRTN/SJF) ---");
-            simulator.SRTN(); // Gọi hàm SRTN đã fix logic chuyển queue của bạn
+            simulator.RunScheduling(); // Gọi hàm SRTN đã fix logic chuyển queue của bạn
             simulator.PrintSchedulingDiagram(); // Gọi hàm in biểu đồ
 
             // 5. In kết quả thống kê theo mẫu tài liệu [cite: 108, 109]
@@ -332,110 +439,3 @@ namespace Dl
         }
     }
 }
-// public void RunScheduling()
-// {
-//     int completedProcesses = 0;
-//     int currentTime = 0;
-//     int i = 0;
-//     int queueIndex = 0;
-//     Process? currentProcess = null;
-//     processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
-//     while (completedProcesses < processes.Count)
-//     {
-//         // Thêm tiến trình vào các hàng đợi tương ứng khi đến giờ
-//         while (i < processes.Count && processes[i].arrivalTime <= currentTime)
-//         {
-//             foreach (Queue q in queues)
-//             {
-//                 if (q.queueID == processes[i].queueID)
-//                 {
-//                     q.readyQueue.Add(processes[i]);
-//                     // Nếu queue policy là SRTN, sắp xếp lại theo remaining time
-//                     if (q.schedulingPolicy == "SRTN")
-//                     {
-//                         q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
-//                     }
-//                     break;
-//                 }
-//             }
-//             i++;
-//         }
-
-//         Queue currentQueue = queues[queueIndex];
-//         // Nếu queue hiện tại rỗng, kiểm tra xem có nên tăng thời gian hay chuyển queue
-//         if (currentQueue.readyQueue.Count == 0)
-//         {
-//             bool allEmpty = true;
-//             foreach (var q in queues)
-//             {
-//                 if (q.readyQueue.Count > 0) { allEmpty = false; break; }
-//             }
-//             if (allEmpty)
-//             {
-//                 currentTime++; // Tất cả queue đều rỗng, tăng thời gian lên chờ process mới
-//             }
-//             else
-//             {
-//                 // Chuyển sang queue tiếp theo (bỏ qua queue rỗng)
-//                 currentQueue.remainingTime = 0;
-//                 queueIndex = (queueIndex + 1) % queues.Count;
-//             }
-//             continue;
-//         }
-
-//         // Xử lý dựa theo Policy của Queue
-//         if (currentQueue.schedulingPolicy == "SRTN")
-//         {
-//             // Chuyển queue nếu queue hiện tại hết timeSlice
-//             if (currentQueue.remainingTime == 0)
-//             {
-//                 currentQueue.remainingTime = currentQueue.timeSlice;
-//                 if (currentProcess != null) currentProcess.endTime = currentTime;
-//                 queueIndex = (queueIndex + 1) % queues.Count;
-//                 continue;
-//             }
-
-//             Process nextProcess = currentQueue.readyQueue[0];
-
-//             if (currentProcess != nextProcess)
-//             {
-//                 if (currentProcess != null) currentProcess.endTime = currentTime;
-//                 currentProcess = nextProcess;
-//                 currentProcess.startTime = currentTime;
-//             }
-//             int prevTime = currentTime;
-//             currentProcess.remainingTime--;
-//             currentQueue.remainingTime--;
-//             currentTime++;
-//             AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
-//             if (currentProcess.remainingTime == 0)
-//             {
-//                 currentProcess.isCompleted = true;
-//                 currentProcess.completionTime = currentTime;
-//                 currentProcess.calculateMetrics();
-//                 currentQueue.readyQueue.Remove(currentProcess);
-//                 completedProcesses++;
-//             }
-//         }
-//         else if (currentQueue.schedulingPolicy == "SJF")
-//         {
-//             currentProcess = currentQueue.getNextProcessSJF();
-//             if (currentProcess != null)
-//             {
-//                 currentProcess.startTime = currentTime;
-//                 currentTime += currentProcess.burstTime; // SJF nhảy cóc thời gian
-
-//                 AddLog(currentProcess.startTime, currentTime, currentQueue.queueID, currentProcess.processID);
-
-//                 currentProcess.endTime = currentTime;
-//                 currentProcess.isCompleted = true;
-//                 currentProcess.completionTime = currentTime;
-//                 currentProcess.calculateMetrics();
-
-//                 currentQueue.readyQueue.Remove(currentProcess);
-//                 completedProcesses++;
-//                 queueIndex = (queueIndex + 1) % queues.Count; // Thực thi xong 1 process thì xoay vòng queue
-//             }
-//         }
-//     }
-// }
