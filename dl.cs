@@ -405,6 +405,41 @@ namespace Dl
             }
 
         }
+        public void ExportResultsToFile(string fileName, SchedulingResult simulator)
+        {
+            using (StreamWriter writer = new StreamWriter(fileName))
+            {
+                writer.WriteLine("=================== CPU SCHEDULING DIAGRAM ===================\n");
+                writer.WriteLine("{0,-18} {1,-10} {2,-10}", "[Start - End]", "Queue", "Process");
+                writer.WriteLine("-----------------------------------------");
+                foreach (var log in simulator.logs)
+                {
+                    writer.WriteLine("{0,-18} {1,-10} {2,-10}", $"[{log.startTime} - {log.endTime}]", log.queueID, log.processID);
+                }
+                writer.WriteLine("\n");
+                writer.WriteLine("===================== PROCESS STATISTICS =====================\n");
+                writer.WriteLine("--------------------------------------------------------------");
+                writer.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}",
+                    "Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting");
+                writer.WriteLine("--------------------------------------------------------------");
+                simulator.processes.Sort((a, b) => a.processID.CompareTo(b.processID));
+
+                double totalWT = 0, totalTT = 0;
+                foreach (var p in simulator.processes)
+                {
+                    writer.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}",
+                        p.processID, p.arrivalTime, p.burstTime, p.completionTime, p.turnaroundTime, p.waitingTime);
+
+                    totalWT += p.waitingTime;
+                    totalTT += p.turnaroundTime;
+                }
+
+                int count = simulator.processes.Count;
+                writer.WriteLine("--------------------------------------------------------------");
+                writer.WriteLine($"Average Turnaround Time: {totalTT / count:F1}");
+                writer.WriteLine($"Average Waiting Time:    {totalWT / count:F1}");
+            }
+        }
     }
     class Program
     {
@@ -435,7 +470,7 @@ namespace Dl
             // 4. Thực thi thuật toán điều phối
             simulator.RunScheduling(); // Gọi hàm SRTN đã fix logic chuyển queue của bạn
             simulator.PrintSchedulingDiagram(); // Gọi hàm in biểu đồ
-
+            reader.ExportResultsToFile("output.txt", simulator); // Xuất kết quả ra file output.txt
         }
     }
 }
