@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Xml.Linq;
-namespace Dl
+namespace Lab01
 {
     public class executionLog
     {
@@ -26,22 +26,6 @@ namespace Dl
             timeSlice = ts;
             schedulingPolicy = sp;
             remainingTime = ts;
-        }
-        // class lưu vết để in biểu đồ
-
-        // sjf
-        public Process? getNextProcessSJF()
-        {
-            if (readyQueue.Count == 0) return null;
-            Process shortestJob = readyQueue[0];
-            foreach (Process p in readyQueue)
-            {
-                if (p.burstTime < shortestJob.burstTime)
-                {
-                    shortestJob = p;
-                }
-            }
-            return shortestJob;
         }
     }
 
@@ -121,6 +105,10 @@ namespace Dl
                             {
                                 q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
                             }
+                            else if (q.schedulingPolicy == "SJF")
+                            {
+                                q.readyQueue.Sort((p1, p2) => p1.burstTime.CompareTo(p2.burstTime));
+                            }
                             break;
                         }
                     }
@@ -156,27 +144,24 @@ namespace Dl
                     continue;
                 }
                 int prevTime = currentTime;
+
+                currentProcess = currentQueue.readyQueue[0];
                 // Xử lý dựa theo Policy của Queue
                 if (currentQueue.schedulingPolicy == "SRTN")
                 {
-                    currentProcess = currentQueue.readyQueue[0]; // Lấy tiến trình có remaining time ngắn nhất (đã sắp xếp)
                     currentProcess.remainingTime--;
                     currentQueue.remainingTime--;
                     currentTime++;
                 }
                 else if (currentQueue.schedulingPolicy == "SJF")
                 {
-                    currentProcess = currentQueue.getNextProcessSJF();
-                    if (currentProcess != null)
-                    {
-                        int executionTime = Math.Min(currentProcess.remainingTime, currentQueue.remainingTime);
-                        currentTime += executionTime; // SJF nhảy cóc thời gian
-                        currentProcess.remainingTime -= executionTime;
-                        currentQueue.remainingTime -= executionTime;
-                    }
+                    int executionTime = Math.Min(currentProcess.remainingTime, currentQueue.remainingTime);
+                    currentTime += executionTime; // SJF nhảy cóc thời gian
+                    currentProcess.remainingTime -= executionTime;
+                    currentQueue.remainingTime -= executionTime;
                 }
-                
-                if (currentProcess != null) AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
+
+                AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
 
                 if (currentProcess != null && currentProcess.remainingTime == 0)
                 {
