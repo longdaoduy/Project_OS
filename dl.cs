@@ -100,14 +100,14 @@ namespace Lab01
                         if (q.queueID == processes[i].queueID)
                         {
                             q.readyQueue.Add(processes[i]);
-                            // Nếu queue policy là SRTN, sắp xếp lại theo remaining time
+                            
                             if (q.schedulingPolicy == "SRTN")
                             {
-                                q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime));
+                                q.readyQueue.Sort((p1, p2) => p1.remainingTime.CompareTo(p2.remainingTime)); // Nếu queue policy là SRTN, sắp xếp lại theo remaining time
                             }
                             else if (q.schedulingPolicy == "SJF")
                             {
-                                q.readyQueue.Sort((p1, p2) => p1.burstTime.CompareTo(p2.burstTime));
+                                q.readyQueue.Sort((p1, p2) => p1.burstTime.CompareTo(p2.burstTime)); // Nếu queue policy là SJF, sắp xếp lại theo burst time
                             }
                             break;
                         }
@@ -138,24 +138,32 @@ namespace Lab01
                     else
                     {
                         // Chuyển sang queue tiếp theo (bỏ qua queue rỗng)
-                        currentQueue.remainingTime = 0;
+                        currentQueue.remainingTime = currentQueue.timeSlice; // Reset thời gian của queue mới
                         queueIndex = (queueIndex + 1) % queues.Count;
                     }
                     continue;
                 }
-                int prevTime = currentTime;
 
+                int prevTime = currentTime;
                 currentProcess = currentQueue.readyQueue[0];
+                int executionTime = Math.Min(currentProcess.remainingTime, currentQueue.remainingTime);
                 // Xử lý dựa theo Policy của Queue
                 if (currentQueue.schedulingPolicy == "SRTN")
                 {
-                    currentProcess.remainingTime--;
-                    currentQueue.remainingTime--;
-                    currentTime++;
+                    int timeToNextArrival = int.MaxValue;
+                    if (i < processes.Count) 
+                    {
+                        timeToNextArrival = processes[i].arrivalTime - currentTime;
+                    }
+                    
+                    executionTime = Math.Min(executionTime, timeToNextArrival); 
+
+                    currentTime += executionTime; // SRTN nhảy cóc thời gian
+                    currentProcess.remainingTime -= executionTime;
+                    currentQueue.remainingTime -= executionTime;
                 }
                 else if (currentQueue.schedulingPolicy == "SJF")
                 {
-                    int executionTime = Math.Min(currentProcess.remainingTime, currentQueue.remainingTime);
                     currentTime += executionTime; // SJF nhảy cóc thời gian
                     currentProcess.remainingTime -= executionTime;
                     currentQueue.remainingTime -= executionTime;
@@ -181,13 +189,14 @@ namespace Lab01
             {
                 Console.WriteLine("{0,-18} {1,-10} {2,-10}", $"[{log.startTime} - {log.endTime}]", log.queueID, log.processID);
             }
+            
             Console.WriteLine("\n");
             Console.WriteLine("===================== PROCESS STATISTICS =====================\n");
             Console.WriteLine("--------------------------------------------------------------");
             Console.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}",
                 "Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting");
             Console.WriteLine("--------------------------------------------------------------");
-            processes.Sort((a, b) => a.processID.CompareTo(b.processID));
+            
 
             double totalWT = 0, totalTT = 0;
             foreach (var p in processes)
@@ -201,8 +210,8 @@ namespace Lab01
 
             int count = processes.Count;
             Console.WriteLine("--------------------------------------------------------------");
-            Console.WriteLine($"Average Turnaround Time: {totalTT / count:F1}"); // In 1 chữ số thập phân [cite: 111]
-            Console.WriteLine($"Average Waiting Time:    {totalWT / count:F1}"); // [cite: 112]
+            Console.WriteLine($"Average Turnaround Time: {totalTT / count:F1}");
+            Console.WriteLine($"Average Waiting Time:    {totalWT / count:F1}");
         }
     }
 
@@ -254,13 +263,13 @@ namespace Lab01
                 {
                     writer.WriteLine("{0,-18} {1,-10} {2,-10}", $"[{log.startTime} - {log.endTime}]", log.queueID, log.processID);
                 }
+
                 writer.WriteLine("\n");
                 writer.WriteLine("===================== PROCESS STATISTICS =====================\n");
                 writer.WriteLine("--------------------------------------------------------------");
                 writer.WriteLine("{0,-10}{1,-10}{2,-10}{3,-12}{4,-12}{5,-10}",
                     "Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting");
                 writer.WriteLine("--------------------------------------------------------------");
-                simulator.processes.Sort((a, b) => a.processID.CompareTo(b.processID));
 
                 double totalWT = 0, totalTT = 0;
                 foreach (var p in simulator.processes)
