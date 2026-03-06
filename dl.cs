@@ -88,6 +88,7 @@ namespace Lab01
             int queueIndex = 0;
             Process? currentProcess = null;
 
+            queues.Sort((q1,q2) => q2.timeSlice.CompareTo(q1.timeSlice)); // Sắp xếp các queue theo time slice giảm dần để ưu tiên queue có time slice lớn hơn
             processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
 
             while (completedProcesses < processes.Count)
@@ -148,7 +149,13 @@ namespace Lab01
                 currentProcess = currentQueue.readyQueue[0];
                 int executionTime = Math.Min(currentProcess.remainingTime, currentQueue.remainingTime);
                 // Xử lý dựa theo Policy của Queue
-                if (currentQueue.schedulingPolicy == "SRTN")
+                if (currentQueue.schedulingPolicy == "SJF")
+                {
+                    currentTime += executionTime; // SJF nhảy cóc thời gian
+                    currentProcess.remainingTime -= executionTime;
+                    currentQueue.remainingTime -= executionTime;
+                }
+                else if (currentQueue.schedulingPolicy == "SRTN")
                 {
                     int timeToNextArrival = int.MaxValue;
                     if (i < processes.Count) 
@@ -159,12 +166,6 @@ namespace Lab01
                     executionTime = Math.Min(executionTime, timeToNextArrival); 
 
                     currentTime += executionTime; // SRTN nhảy cóc thời gian
-                    currentProcess.remainingTime -= executionTime;
-                    currentQueue.remainingTime -= executionTime;
-                }
-                else if (currentQueue.schedulingPolicy == "SJF")
-                {
-                    currentTime += executionTime; // SJF nhảy cóc thời gian
                     currentProcess.remainingTime -= executionTime;
                     currentQueue.remainingTime -= executionTime;
                 }
@@ -208,20 +209,20 @@ namespace Lab01
                 totalTT += p.turnaroundTime;
             }
 
-            int count = processes.Count;
             Console.WriteLine("--------------------------------------------------------------");
-            Console.WriteLine($"Average Turnaround Time: {totalTT / count:F1}");
-            Console.WriteLine($"Average Waiting Time:    {totalWT / count:F1}");
+            Console.WriteLine($"Average Turnaround Time: {totalTT / processes.Count:F1}");
+            Console.WriteLine($"Average Waiting Time:    {totalWT / processes.Count:F1}");
+            Console.WriteLine("==============================================================");
         }
     }
 
     class FileHandler
     {
-        public void readDataFromFile(string fileName, SchedulingResult simulator)
+        public void ReadDataFromFile(string fileName, SchedulingResult simulator)
         {
             if (!File.Exists(fileName))
             {
-                Console.WriteLine("File not found!");
+                Console.WriteLine($"File {fileName} not found!");
                 return;
             }
 
@@ -229,7 +230,8 @@ namespace Lab01
             int i = 0;
             int qCount = int.Parse(lines[i].Trim());
             i++;
-            for (int j = 0; j < qCount; j++)
+
+            while (i < qCount + 1)
             {
                 string[] queueData = lines[i].Trim().Split(' ');
                 string queueID = queueData[0];
@@ -239,6 +241,7 @@ namespace Lab01
                 simulator.queues.Add(q);
                 i++;
             }
+
             while (i < lines.Length)
             {
                 string[] processData = lines[i].Trim().Split(' ');
@@ -250,7 +253,6 @@ namespace Lab01
                 simulator.processes.Add(p);
                 i++;
             }
-
         }
         public void ExportResultsToFile(string fileName, SchedulingResult simulator)
         {
@@ -281,10 +283,10 @@ namespace Lab01
                     totalTT += p.turnaroundTime;
                 }
 
-                int count = simulator.processes.Count;
                 writer.WriteLine("--------------------------------------------------------------");
-                writer.WriteLine($"Average Turnaround Time: {totalTT / count:F1}");
-                writer.WriteLine($"Average Waiting Time:    {totalWT / count:F1}");
+                writer.WriteLine($"Average Turnaround Time: {totalTT / simulator.processes.Count:F1}");
+                writer.WriteLine($"Average Waiting Time:    {totalWT / simulator.processes.Count:F1}");
+                writer.WriteLine("==============================================================");
             }
         }
     }
@@ -292,32 +294,27 @@ namespace Lab01
     {
         static void Main(string[] args)
         {
-            // 1. Khởi tạo danh sách rỗng để chuẩn bị nhận dữ liệu từ file
             List<Process> pList = new List<Process>();
             List<Queue> qList = new List<Queue>();
 
-            // 2. Tạo đối tượng Simulator (SchedulingResult)
-            // Lưu ý: Đảm bảo constructor của SchedulingResult nhận (List<Process>, List<Queue>)
             SchedulingResult simulator = new SchedulingResult(pList, qList);
 
-            // 3. Đọc dữ liệu từ file input.txt
             FileHandler fHandler = new FileHandler();
-            string inputFileName = "input.txt"; // Hoặc lấy từ args[0] theo yêu cầu Lab 
+            string inputFileName = "input.txt";
+            string outputFileName = "output.txt";
 
             Console.WriteLine($"--- Reading data from file: {inputFileName} ---");
-            fHandler.readDataFromFile(inputFileName, simulator);
-
-            // Kiểm tra nếu dữ liệu rỗng
+            fHandler.ReadDataFromFile(inputFileName, simulator);
             if (simulator.processes.Count == 0 || simulator.queues.Count == 0)
             {
                 Console.WriteLine("No processes or queues found in the input file. Please check the file format.");
                 return;
             }
 
-            // 4. Thực thi thuật toán điều phối
-            simulator.RunScheduling(); // Gọi hàm SRTN đã fix logic chuyển queue của bạn
-            simulator.PrintSchedulingDiagram(); // Gọi hàm in biểu đồ
-            fHandler.ExportResultsToFile("output.txt", simulator); // Xuất kết quả ra file output.txt
+            simulator.RunScheduling();
+            simulator.PrintSchedulingDiagram();
+
+            fHandler.ExportResultsToFile(outputFileName, simulator);
         }
     }
 }
