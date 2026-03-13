@@ -88,7 +88,7 @@ namespace Lab01
             int queueIndex = 0;
             Process? currentProcess = null;
 
-            queues.Sort((q1,q2) => q2.timeSlice.CompareTo(q1.timeSlice)); // Sắp xếp các queue theo time slice giảm dần để ưu tiên queue có time slice lớn hơn
+            queues.Sort((q1,q2) => q2.timeSlice.CompareTo(q1.timeSlice));
             processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
 
             while (completedProcesses < processes.Count)
@@ -139,7 +139,7 @@ namespace Lab01
                     else
                     {
                         // Chuyển sang queue tiếp theo (bỏ qua queue rỗng)
-                        currentQueue.remainingTime = currentQueue.timeSlice; // Reset thời gian của queue mới
+                        currentQueue.remainingTime = currentQueue.timeSlice; // Reset thời gian của queue
                         queueIndex = (queueIndex + 1) % queues.Count;
                     }
                     continue;
@@ -296,6 +296,7 @@ namespace Lab01
         {
             string inputFile = args[0];
             string outputFile = args[1];
+            
             List<Process> pList = new List<Process>();
             List<Queue> qList = new List<Queue>();
 
@@ -304,7 +305,7 @@ namespace Lab01
             FileHandler fHandler = new FileHandler();
 
             Console.WriteLine($"--- Reading data from file: {inputFile} ---");
-            fHandler.ReadDataFromFile(inputFileName, simulator);
+            fHandler.ReadDataFromFile(inputFile, simulator);
             if (simulator.processes.Count == 0 || simulator.queues.Count == 0)
             {
                 Console.WriteLine("No processes or queues found in the input file. Please check the file format.");
