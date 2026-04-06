@@ -92,7 +92,7 @@ namespace OS_Lab02_FAT32
             int currentTime = 0;
             int i = 0;
             int queueIndex = 0;
-            SchedulingProcess currentProcess = null;
+            SchedulingProcess? currentProcess = null;
 
             queues.Sort((q1, q2) => q2.timeSlice.CompareTo(q1.timeSlice));
             processes.Sort((p1, p2) => p1.arrivalTime.CompareTo(p2.arrivalTime));
@@ -281,8 +281,8 @@ namespace OS_Lab02_FAT32
         private bool _bootSectorReady = false;
 
         // Data stored by Function3 for use in Function4
-        private List<SchedulingQueue>   _schedulingQueues    = null;
-        private List<SchedulingProcess> _schedulingProcesses = null;
+        private List<SchedulingQueue>   _schedulingQueues    = null!;
+        private List<SchedulingProcess> _schedulingProcesses = null!;
 
         public Fat32Reader(string driveLetter)
         {
