@@ -266,11 +266,11 @@ namespace OS_Lab02_FAT32
             {
                 new BootSectorProperty { Property = "Bytes per sector", Value = _bytesPerSector.ToString() },
                 new BootSectorProperty { Property = "Sectors per cluster", Value = _sectorsPerCluster.ToString() },
-                new BootSectorProperty { Property = "Number of sectors in Boot Sector", Value = _reservedSectors.ToString() },
+                new BootSectorProperty { Property = "Number of sectors in the Boot Sector region", Value = _reservedSectors.ToString() },
                 new BootSectorProperty { Property = "Number of FAT tables", Value = _numberOfFATs.ToString() },
                 new BootSectorProperty { Property = "Number of sectors per FAT table", Value = _sectorsPerFAT.ToString() },
                 new BootSectorProperty { Property = "Number of sectors for the RDET", Value = rdetSectors.ToString() },
-                new BootSectorProperty { Property = "Total number of sectors on disk", Value = _totalSectors.ToString() }
+                new BootSectorProperty { Property = "Total number of sectors on the disk", Value = _totalSectors.ToString() }
             };
         }
 
