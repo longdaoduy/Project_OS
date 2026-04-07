@@ -49,6 +49,7 @@ namespace OS_Lab02_FAT32
         private Panel       pnlFileCard     = null!;
         private Label       lblFileName     = null!;
         private Label       lblFileDate     = null!;
+        private Label       lblFileTime     = null!;
         private Label       lblFileSize     = null!;
         private DataGridView dgvFunction3   = null!;
         private Button      btnRunSchedule  = null!;
@@ -230,7 +231,7 @@ namespace OS_Lab02_FAT32
             {
                 Dock             = DockStyle.Fill,
                 Orientation      = Orientation.Horizontal,
-                SplitterDistance = 130,
+                SplitterDistance = 20,
                 BackColor        = C_TAB_BG
             };
 
@@ -251,26 +252,40 @@ namespace OS_Lab02_FAT32
             TableLayoutPanel tbl = new TableLayoutPanel
             {
                 Dock        = DockStyle.Fill,
-                ColumnCount = 4,
-                RowCount    = 2,
+                ColumnCount = 9, // 8 cột chứa dữ liệu + 1 cột trống (spring column) để đẩy chữ sang trái
+                RowCount    = 1,
                 BackColor   = Color.Transparent,
                 Padding     = new Padding(6, 0, 6, 6)
             };
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
 
-            lblFileName = new Label { Font = FONT_MONO, AutoSize = true };
-            lblFileDate = new Label { Font = FONT_MONO, AutoSize = true };
-            lblFileSize = new Label { Font = FONT_MONO, AutoSize = true };
+            // Đặt 8 cột đầu tiên thành AutoSize để chúng ôm sát nội dung
+            for (int i = 0; i < 8; i++)
+            {
+                tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            }
+            // Cột thứ 9 chiếm toàn bộ không gian còn lại (Percent = 100)
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            tbl.Controls.Add(MakeInfoCaption("File Name:"), 0, 0);
-            tbl.Controls.Add(lblFileName,                   1, 0);
-            tbl.Controls.Add(MakeInfoCaption("Created:"),   2, 0);
-            tbl.Controls.Add(lblFileDate,                   3, 0);
-            tbl.Controls.Add(MakeInfoCaption("Size:"),      0, 1);
-            tbl.Controls.Add(lblFileSize,                   1, 1);
+            // Khởi tạo các label hiển thị giá trị (thêm Padding để chữ ngang hàng với Caption)
+            lblFileName = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+            lblFileDate = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+            lblFileTime = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+            lblFileSize = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+
+            // Khởi tạo Caption và thêm khoảng cách lề trái (Margin Left = 25) để không bị dính vào chữ phía trước
+            var capName = MakeInfoCaption("File Name:");
+            var capDate = MakeInfoCaption("Date Created:"); capDate.Margin = new Padding(25, 0, 0, 0);
+            var capTime = MakeInfoCaption("Time Created:"); capTime.Margin = new Padding(25, 0, 0, 0);
+            var capSize = MakeInfoCaption("Total Size:");   capSize.Margin = new Padding(25, 0, 0, 0);
+
+            tbl.Controls.Add(capName,     0, 0);
+            tbl.Controls.Add(lblFileName, 1, 0);
+            tbl.Controls.Add(capDate,     2, 0);
+            tbl.Controls.Add(lblFileDate, 3, 0);
+            tbl.Controls.Add(capTime,     4, 0);
+            tbl.Controls.Add(lblFileTime, 5, 0);
+            tbl.Controls.Add(capSize,     6, 0);
+            tbl.Controls.Add(lblFileSize, 7, 0);
 
             fileCard.Controls.Add(tbl);
             fileCard.Controls.Add(lblHdr);
@@ -464,7 +479,8 @@ namespace OS_Lab02_FAT32
 
             // File info card
             lblFileName.Text = f.Name;
-            lblFileDate.Text = $"{reader.ParseDate(f.CreationDate)}   {reader.ParseTime(f.CreationTime)}";
+            lblFileDate.Text = reader.ParseDate(f.CreationDate);
+            lblFileTime.Text = reader.ParseTime(f.CreationTime); // Gán giờ vào nhãn mới
             lblFileSize.Text = $"{f.FileSize:N0} bytes";
 
             try
