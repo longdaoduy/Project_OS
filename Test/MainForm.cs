@@ -21,6 +21,7 @@ namespace OS_Lab02_FAT32
         // Control cho Tab 3 – nút chạy lập lịch inline
         private Button btnRunScheduleTab3 = null!;
         private RichTextBox rtbSchedulingResult = null!;
+        private const string SchedulingPlaceholder = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)";
 
         // Control cho Tab 4
         private Button btnRunSchedule = null!;
@@ -136,13 +137,13 @@ namespace OS_Lab02_FAT32
                 Font = new Font("Courier New", 10),
                 BackColor = Color.Black,
                 ForeColor = Color.LightGreen,
-                Text = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)"
+                Text = SchedulingPlaceholder
             };
             split3.Panel2.Controls.Add(rtbSchedulingResult);
 
-            gbFunc3.Controls.Add(split3);
-            gbFunc3.Controls.Add(pnlRunBtn3);
             gbFunc3.Controls.Add(lblFileInfo);
+            gbFunc3.Controls.Add(pnlRunBtn3);
+            gbFunc3.Controls.Add(split3);
             tab3.Controls.Add(gbFunc3);
             tabControl.TabPages.Add(tab3);
 
@@ -261,7 +262,7 @@ namespace OS_Lab02_FAT32
 
                 // Kích hoạt nút chạy lập lịch và reset vùng kết quả
                 btnRunScheduleTab3.Enabled = true;
-                rtbSchedulingResult.Text = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)";
+                rtbSchedulingResult.Text = SchedulingPlaceholder;
 
                 // Tự động chuyển sang Tab 3 để xem chi tiết
                 tabControl.SelectedIndex = 2;
@@ -271,7 +272,7 @@ namespace OS_Lab02_FAT32
                 MessageBox.Show("Lỗi khi đọc file: " + ex.Message);
                 dgvFunction3.DataSource = null;
                 btnRunScheduleTab3.Enabled = false;
-                rtbSchedulingResult.Text = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)";
+                rtbSchedulingResult.Text = SchedulingPlaceholder;
             }
         }
 
