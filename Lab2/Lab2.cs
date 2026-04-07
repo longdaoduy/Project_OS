@@ -367,62 +367,149 @@ namespace OS_Lab02_FAT32
         // ==========================================================
 
         // Đảm bảo boot sector đã được đọc (để dùng _rootCluster, v.v.)
-        private void EnsureBootSector()
-        {
-            if (!_bootSectorReady)
-                Function1();
-        }
 
-        // Trả về byte offset của cluster N trong vùng Data
+        // ==========================================================
+        // Function 2 – Liệt kê tất cả file *.txt trên đĩa (dạng phẳng)
+        // ==========================================================
         private long GetClusterOffset(int cluster)
         {
             long dataStart = (long)(_reservedSectors + _numberOfFATs * _sectorsPerFAT) * _bytesPerSector;
             return dataStart + (long)(cluster - 2) * _sectorsPerCluster * _bytesPerSector;
         }
 
-        // Đọc cluster tiếp theo trong chuỗi FAT của cluster hiện tại
-        private int GetNextCluster(int cluster)
+        private int GetNextCluster(int currentCluster)
         {
-            long fatStart    = (long)_reservedSectors * _bytesPerSector;
-            long entryOffset = fatStart + (long)cluster * 4;
+            long fatStart = (long)_reservedSectors * _bytesPerSector;
+            long entryOffset = fatStart + currentCluster * 4; // FAT32 entry là 4 bytes
             byte[] buf = new byte[4];
             if (!ReadAt(entryOffset, buf, 4)) return -1;
-            return BitConverter.ToInt32(buf, 0) & 0x0FFFFFFF;
+            return BitConverter.ToInt32(buf, 0) & 0x0FFFFFFF; // FAT32 chỉ dùng 28 bit cho cluster number
         }
 
-        // Giới hạn số cluster tối đa khi đọc chuỗi (tránh vòng lặp vô hạn khi FAT bị lỗi)
-        private const int MAX_CLUSTER_CHAIN = 200000;
 
-        // Đọc toàn bộ dữ liệu từ chuỗi cluster bắt đầu tại startCluster
-        private byte[] ReadClusterChain(int startCluster)
+        private byte[] ReadCluster(int startCluster)
         {
             int clusterSize = _sectorsPerCluster * _bytesPerSector;
             var data = new List<byte>();
             int cluster = startCluster;
-            int guard   = 0;
-            while (cluster >= 2 && cluster < 0x0FFFFFF8 && guard++ < MAX_CLUSTER_CHAIN)
+            while (cluster >= 2 && cluster < 0x0FFFFFF8)
             {
-                byte[] buf = new byte[clusterSize];
-                if (!ReadAt(GetClusterOffset(cluster), buf, (uint)clusterSize)) break;
-                data.AddRange(buf);
+                byte[] clusterData = new byte[clusterSize];
+                if (!ReadAt(GetClusterOffset(cluster), clusterData, (uint)clusterSize)) break;
+                data.AddRange(clusterData);
                 cluster = GetNextCluster(cluster);
             }
             return data.ToArray();
         }
 
-        // Trích phần tên từ một LFN entry (UTF-16LE tại các offset cố định)
-        private string ExtractLFNPart(byte[] entry)
+        private string LongFileNamePath(byte[] entry)
         {
             int[] offsets = { 1, 3, 5, 7, 9, 14, 16, 18, 20, 22, 24, 28, 30 };
-            var sb = new StringBuilder();
-            foreach (int off in offsets)
+            var nameChars = new List<char>();
+            for (int i = 0; i < 13; i++)
             {
-                ushort ch = BitConverter.ToUInt16(entry, off);
-                if (ch == 0x0000 || ch == 0xFFFF) break;
-                sb.Append((char)ch);
+                ushort ch = BitConverter.ToUInt16(entry, offsets[i]);
+                if (ch == 0x0000 || ch == 0xFFFF) break; // Kết thúc nếu gặp null terminator hoặc padding
+                nameChars.Add((char)ch);
             }
-            return sb.ToString();
+            return new string(nameChars.ToArray());
+
         }
+
+        private void ScanDirectory(int cluster, string path)
+        {
+            if (cluster < 2) return;
+            byte[] dirData = ReadCluster(cluster);
+            int entryCount = dirData.Length / 32;
+            string LFN = "";
+
+            for (int i = 0; i < entryCount; i++)
+            {
+                byte[] entry = new byte[32];
+
+                Array.Copy(dirData, i * 32, entry, 0, 32);
+
+                byte firstByte = entry[0];
+                if (firstByte == 0x00) break; // hết entry
+                if (firstByte == 0xE5) 
+                {
+                    LFN = ""; // BẮT BUỘC: Reset LFN để tránh file rác ám vào file sau
+                    continue; 
+                }
+
+                byte attr = entry[11];
+                if (attr == 0x0F)
+                {
+                    LFN = LongFileNamePath(entry) + LFN;
+                    continue;
+                }
+
+                string name8 = Encoding.ASCII.GetString(entry, 0, 8).TrimEnd();
+                string ext3  = Encoding.ASCII.GetString(entry, 8, 3).TrimEnd();
+
+                string fullName = LFN != "" ? LFN : (ext3.Length > 0 ? $"{name8}.{ext3}" : name8);
+                LFN = ""; // reset LFN sau khi đã dùng
+
+                if ((attr & 0x08) != 0) continue;  // volume ID
+                if (name8 == "." || name8 == "..") continue;
+
+                int hiCluster = BitConverter.ToUInt16(entry, 20);
+                int loCluster = BitConverter.ToUInt16(entry, 26);
+                int firstCluster = (hiCluster << 16) | loCluster;
+
+                if ((attr & 0x10) != 0) // thư mục con
+                {
+                    ScanDirectory(firstCluster, path + fullName + "\\");
+                }
+                else if (ext3.ToLower() == "txt") // file .txt
+                {
+                    _txtFiles.Add(new TxtFileInfo
+                    {
+                        FullPath = path + fullName,
+                        Name = fullName,
+                        CreationTime = BitConverter.ToUInt16(entry, 14),
+                        CreationDate = BitConverter.ToUInt16(entry, 16),
+                        FirstCluster = firstCluster,
+                        FileSize = BitConverter.ToUInt32(entry, 28)
+                    });
+                }
+
+
+
+            }
+
+        }
+
+        public void Function2()
+        {
+            if (!_bootSectorReady)  Function1();
+
+            if (!_scanned)
+            {
+                _txtFiles.Clear();
+                ScanDirectory(_rootCluster, "\\");
+                _scanned = true;
+                
+            }
+
+            if (_txtFiles.Count == 0)
+            {
+                Console.WriteLine("Không tìm thấy file .txt nào trên đĩa.");
+                return;
+            }
+
+            Console.WriteLine(string.Format("{0,-5} {1,-35} {2,-55}",
+                "No.", "File Name", "Full Path"));
+            int listSepWidth = 60;
+            Console.WriteLine(new string('-', listSepWidth));
+            for (int i = 0; i < _txtFiles.Count; i++)
+            {
+                var f = _txtFiles[i];
+                Console.WriteLine(string.Format("{0,-5} {1,-35} {2,-55}",
+                    i + 1, f.Name, f.FullPath));
+            }
+        }
+
 
         // Chuyển FAT16 date thành chuỗi DD/MM/YYYY
         private string ParseDate(ushort date)
@@ -442,99 +529,6 @@ namespace OS_Lab02_FAT32
             return $"{hours:D2}:{mins:D2}:{secs:D2}";
         }
 
-        // Duyệt đệ quy thư mục tại cluster; thêm file .txt tìm được vào _txtFiles
-        private void ScanDirectory(int cluster, string path)
-        {
-            if (cluster < 2) return;
-            byte[] dirData   = ReadClusterChain(cluster);
-            int    entryCount = dirData.Length / 32;
-            string pendingLFN = "";
-
-            for (int i = 0; i < entryCount; i++)
-            {
-                byte[] entry = new byte[32];
-                Array.Copy(dirData, i * 32, entry, 0, 32);
-
-                byte first = entry[0];
-                if (first == 0x00) break;          // hết directory
-                if (first == 0xE5) { pendingLFN = ""; continue; } // entry đã xoá
-
-                byte attr = entry[11];
-
-                if (attr == 0x0F) // LFN entry – ghép từng phần (đọc ngược từ cuối)
-                {
-                    pendingLFN = ExtractLFNPart(entry) + pendingLFN;
-                    continue;
-                }
-
-                string name8 = Encoding.ASCII.GetString(entry, 0, 8).TrimEnd();
-                string ext3  = Encoding.ASCII.GetString(entry, 8, 3).TrimEnd();
-                string displayName = pendingLFN != "" ? pendingLFN
-                                     : (ext3.Length > 0 ? $"{name8}.{ext3}" : name8);
-                pendingLFN = "";
-
-                if ((attr & 0x08) != 0) continue;  // volume ID
-                if (name8 == "." || name8 == "..") continue;
-
-                int hiCluster = BitConverter.ToUInt16(entry, 20);
-                int loCluster = BitConverter.ToUInt16(entry, 26);
-                int firstCluster = (hiCluster << 16) | loCluster;
-
-                if ((attr & 0x10) != 0) // directory
-                {
-                    ScanDirectory(firstCluster, path + displayName + "\\");
-                }
-                else if (string.Equals(ext3, "TXT", StringComparison.OrdinalIgnoreCase)) // file .txt
-                {
-                    _txtFiles.Add(new TxtFileInfo
-                    {
-                        FullPath     = path + displayName,
-                        Name         = displayName,
-                        CreationTime = BitConverter.ToUInt16(entry, 14),
-                        CreationDate = BitConverter.ToUInt16(entry, 16),
-                        FirstCluster = firstCluster,
-                        FileSize     = BitConverter.ToUInt32(entry, 28)
-                    });
-                }
-            }
-        }
-
-        // Đảm bảo _txtFiles đã được nạp
-        private void EnsureTxtFilesLoaded()
-        {
-            EnsureBootSector();
-            if (!_scanned)
-            {
-                _txtFiles.Clear();
-                ScanDirectory(_rootCluster, "\\");
-                _scanned = true;
-            }
-        }
-
-        // ==========================================================
-        // Function 2 – Liệt kê tất cả file *.txt trên đĩa (dạng phẳng)
-        // ==========================================================
-        public void Function2()
-        {
-            EnsureTxtFilesLoaded();
-
-            if (_txtFiles.Count == 0)
-            {
-                Console.WriteLine("Không tìm thấy file .txt nào trên đĩa.");
-                return;
-            }
-
-            Console.WriteLine(string.Format("{0,-5} {1,-35} {2,-55} {3}",
-                "No.", "File Name", "Full Path", "Size (bytes)"));
-            int listSepWidth = 5 + 1 + 35 + 1 + 55 + 1 + 12;
-            Console.WriteLine(new string('-', listSepWidth));
-            for (int i = 0; i < _txtFiles.Count; i++)
-            {
-                var f = _txtFiles[i];
-                Console.WriteLine(string.Format("{0,-5} {1,-35} {2,-55} {3}",
-                    i + 1, f.Name, f.FullPath, f.FileSize));
-            }
-        }
 
         // ==========================================================
         // Function 3 – Xem thông tin chi tiết của một file *.txt
@@ -543,7 +537,15 @@ namespace OS_Lab02_FAT32
         // ==========================================================
         public void Function3()
         {
-            EnsureTxtFilesLoaded();
+            if (!_bootSectorReady)  Function1();
+
+            if (!_scanned)
+            {
+                _txtFiles.Clear();
+                ScanDirectory(_rootCluster, "\\");
+                _scanned = true;
+                
+            }
 
             if (_txtFiles.Count == 0)
             {
@@ -570,86 +572,63 @@ namespace OS_Lab02_FAT32
             Console.WriteLine(new string('=', 75));
 
             // --- Đọc và phân tích nội dung file ---
-            byte[] rawBytes = ReadClusterChain(file.FirstCluster);
-            int    len      = (int)Math.Min(file.FileSize, (uint)rawBytes.Length);
-            string text     = Encoding.UTF8.GetString(rawBytes, 0, len);
-            string[] lines  = text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            byte[] fileData = ReadCluster(file.FirstCluster);
+            string content = Encoding.ASCII.GetString(fileData, 0, (int)file.FileSize);
+            string[] lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
 
             if (lines.Length == 0)
             {
                 Console.WriteLine("File rỗng hoặc không đúng định dạng.");
                 return;
             }
+            int i = 0;
 
-            int qCount;
-            if (!int.TryParse(lines[0].Trim(), out qCount) || qCount <= 0 || qCount + 1 > lines.Length)
-            {
-                Console.WriteLine("Nội dung file không đúng định dạng lịch trình.");
-                return;
-            }
+            int qCount = int.Parse(lines[i].Trim());
 
-            // Đọc thông tin các queue
-            var queues = new Dictionary<string, (int timeSlice, string algorithm)>();
-            for (int i = 1; i <= qCount && i < lines.Length; i++)
-            {
-                string[] parts = lines[i].Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 3) continue;
-                int ts;
-                if (!int.TryParse(parts[1], out ts))
-                {
-                    Console.WriteLine($"Lỗi: Time slice không hợp lệ tại dòng queue {i}: '{lines[i]}'");
-                    return;
-                }
-                queues[parts[0]] = (ts, parts[2]);
-            }
-
-            // --- Lưu dữ liệu lịch biểu cho Function4 ---
+            i++;
             _schedulingQueues    = new List<Queue>();
             _schedulingProcesses = new List<Process>();
-            foreach (var kv in queues)
-                _schedulingQueues.Add(new Queue(kv.Key, kv.Value.timeSlice, kv.Value.algorithm));
 
-            // --- Bảng thông tin tiến trình ---
-            const int COL_WIDTH_PROCESS_ID    = 12;
-            const int COL_WIDTH_ARRIVAL_TIME  = 14;
-            const int COL_WIDTH_CPU_BURST     = 16;
-            const int COL_WIDTH_QUEUE_ID      = 19;
-            const int COL_WIDTH_TIME_SLICE    = 12;
-            const int COL_WIDTH_ALGORITHM     = 28;
+            while (i < qCount + 1)
+            {
+                string[] queueData = lines[i].Trim().Split(' ');
+                string queueID = queueData[0];
+                int timeSlice = int.Parse(queueData[1]);
+                string schedulingPolicy = queueData[2];
+                Queue q = new Queue(queueID, timeSlice, schedulingPolicy);
+                _schedulingQueues.Add(q);
+                i++;
+            }
 
-            string sep = "+" + new string('-', COL_WIDTH_PROCESS_ID)   + "+"
-                             + new string('-', COL_WIDTH_ARRIVAL_TIME)  + "+"
-                             + new string('-', COL_WIDTH_CPU_BURST)     + "+"
-                             + new string('-', COL_WIDTH_QUEUE_ID)      + "+"
-                             + new string('-', COL_WIDTH_TIME_SLICE)    + "+"
-                             + new string('-', COL_WIDTH_ALGORITHM)     + "+";
+            while (i < lines.Length)
+            {
+                string[] processData = lines[i].Trim().Split(' ');
+                string processID = processData[0];
+                int arrivalTime = int.Parse(processData[1]);
+                int burstTime = int.Parse(processData[2]);
+                string queueID = processData[3];
+                Process p = new Process(processID, arrivalTime, burstTime, queueID);
+                _schedulingProcesses.Add(p);
+                i++;
+            }
 
-            Console.WriteLine(sep);
+            Console.WriteLine("+------------+--------------+----------------+-------------------+------------+----------------------------+");
             Console.WriteLine(string.Format("| {0,-10} | {1,-12} | {2,-14} | {3,-17} | {4,-10} | {5,-26} |",
                 "Process ID", "Arrival Time", "CPU Burst Time", "Priority Queue ID",
                 "Time Slice", "Scheduling Algorithm Name"));
-            Console.WriteLine(sep);
+            Console.WriteLine("+------------+--------------+----------------+-------------------+------------+----------------------------+");
 
-            for (int i = qCount + 1; i < lines.Length; i++)
+            foreach (var p in _schedulingProcesses)
             {
-                string[] parts = lines[i].Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 4) continue;
-
-                string pid       = parts[0];
-                string arrival   = parts[1];
-                string burst     = parts[2];
-                string qid       = parts[3];
-                string timeSlice = queues.ContainsKey(qid) ? queues[qid].timeSlice.ToString() : "N/A";
-                string algorithm = queues.ContainsKey(qid) ? queues[qid].algorithm             : "N/A";
+                var q = _schedulingQueues.Find(queue => queue.queueID == p.queueID);
+                string timeSliceStr = q != null ? q.timeSlice.ToString() : "N/A";
+                string policyStr = q != null ? q.schedulingPolicy : "N/A";
 
                 Console.WriteLine(string.Format("| {0,-10} | {1,-12} | {2,-14} | {3,-17} | {4,-10} | {5,-26} |",
-                    pid, arrival, burst, qid, timeSlice, algorithm));
-                // Lưu process cho Function4
-                if (int.TryParse(arrival, out int at) && int.TryParse(burst, out int bt))
-                    _schedulingProcesses.Add(new Process(pid, at, bt, qid));
+                    p.processID, p.arrivalTime, p.burstTime, p.queueID,
+                    timeSliceStr, policyStr));
             }
-
-            Console.WriteLine(sep);
+            Console.WriteLine("+------------+--------------+----------------+-------------------+------------+----------------------------+");
         }
 
 
@@ -659,7 +638,9 @@ namespace OS_Lab02_FAT32
         // ==========================================================
         public void Function4()
         {
-            
+            SchedulingResult scheduler = new SchedulingResult(_schedulingProcesses!, _schedulingQueues!);
+            scheduler.RunScheduling();
+            scheduler.PrintSchedulingDiagram();
         }
     }
 
