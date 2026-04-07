@@ -65,7 +65,7 @@ namespace OS_Lab02_FAT32
             split2.Panel1.Controls.Add(gbFunc2);
 
             GroupBox gbFunc3 = new GroupBox { Text = "Function 3: Chi tiết file & Thông tin tiến trình", Dock = DockStyle.Fill };
-            lblFileInfo = new Label { Dock = DockStyle.Top, Height = 40, Font = new Font("Arial", 9, FontStyle.Bold) };
+            lblFileInfo = new Label { Dock = DockStyle.Top, Height = 50, Font = new Font("Arial", 9, FontStyle.Bold) };
             dgvFunction3 = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, RowHeadersVisible = false, AllowUserToAddRows = false };
             gbFunc3.Controls.Add(dgvFunction3);
             gbFunc3.Controls.Add(lblFileInfo);
@@ -122,6 +122,15 @@ namespace OS_Lab02_FAT32
                 dgvFunction1.DataSource = reader.GetBootSectorInfo();
                 reader.ScanForTxtFiles();
                 dgvFunction2.DataSource = reader.TxtFiles;
+                // Chỉ hiển thị các cột No., File Name, Full Path như Function 2 trong Lab2.cs
+                foreach (DataGridViewColumn col in dgvFunction2.Columns)
+                    col.Visible = false;
+                dgvFunction2.Columns["No"].Visible = true;
+                dgvFunction2.Columns["Name"].Visible = true;
+                dgvFunction2.Columns["FullPath"].Visible = true;
+                dgvFunction2.Columns["No"].HeaderText = "No.";
+                dgvFunction2.Columns["Name"].HeaderText = "File Name";
+                dgvFunction2.Columns["FullPath"].HeaderText = "Full Path";
                 MessageBox.Show("Đọc đĩa thành công! Hãy sang Tab 'File System' để chọn file text.", "Thành công");
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Lỗi đọc đĩa"); }
@@ -132,8 +141,10 @@ namespace OS_Lab02_FAT32
             if (e.RowIndex < 0 || reader == null) return;
             var selectedFile = reader.TxtFiles[e.RowIndex];
 
-            lblFileInfo.Text = $"Name: {selectedFile.Name}  |  Size: {selectedFile.FileSize} bytes\n" +
-                               $"Created: {reader.ParseTime(selectedFile.CreationTime)} {reader.ParseDate(selectedFile.CreationDate)}";
+            lblFileInfo.Text = $"Name: {selectedFile.Name}\n" +
+                               $"Date Created: {reader.ParseDate(selectedFile.CreationDate)}   " +
+                               $"Time Created: {reader.ParseTime(selectedFile.CreationTime)}   " +
+                               $"Total Size: {selectedFile.FileSize} bytes";
             try
             {
                 reader.ParseTxtFile(selectedFile);
