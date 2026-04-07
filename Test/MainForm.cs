@@ -525,7 +525,7 @@ namespace OS_Lab02_FAT32
             FillStatsTable(scheduler);
             BuildQueueLegend(scheduler);
 
-            tabControl.SelectedIndex = 2;
+            tabControl.SelectedIndex = 2; // switch to ③ CPU Scheduling tab
         }
 
         // ══════════════════════════════════════════════════════════════════════
