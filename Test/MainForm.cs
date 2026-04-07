@@ -24,10 +24,16 @@ namespace OS_Lab02_FAT32
         private static readonly Color C_OK            = Color.FromArgb(40, 167, 69);
         private static readonly Color C_ERR           = Color.FromArgb(220, 53, 69);
 
-        private static readonly Font FONT_UI   = new Font("Segoe UI", 10);
-        private static readonly Font FONT_BOLD = new Font("Segoe UI", 10, FontStyle.Bold);
-        private static readonly Font FONT_MONO = new Font("Consolas", 9);
-        private static readonly Font FONT_TITLE= new Font("Segoe UI", 13, FontStyle.Bold);
+        private static readonly Font FONT_UI       = new Font("Segoe UI", 10);
+        private static readonly Font FONT_BOLD     = new Font("Segoe UI", 10, FontStyle.Bold);
+        private static readonly Font FONT_BOLD9    = new Font("Segoe UI",  9, FontStyle.Bold);
+        private static readonly Font FONT_SMALL8   = new Font("Segoe UI",  8);
+        private static readonly Font FONT_MONO     = new Font("Consolas",  9);
+        private static readonly Font FONT_TITLE    = new Font("Segoe UI", 13, FontStyle.Bold);
+        // Gantt-chart fonts (reused across every redraw)
+        private static readonly Font FONT_GANTT_SM = new Font("Segoe UI", 7.5f);
+        private static readonly Font FONT_GANTT_LB = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        private static readonly Font FONT_GANTT_AX = new Font("Segoe UI", 7.5f);
 
         // ── state ──────────────────────────────────────────────────────────────
         private Fat32Reader reader = null!;
@@ -121,7 +127,7 @@ namespace OS_Lab02_FAT32
                 Width     = 130,
                 AutoSize  = false,
                 ForeColor = Color.FromArgb(180, 210, 180),
-                Font      = new Font("Segoe UI", 8),
+                Font      = FONT_SMALL8,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -133,7 +139,7 @@ namespace OS_Lab02_FAT32
             tabControl = new TabControl
             {
                 Dock      = DockStyle.Fill,
-                Font      = new Font("Segoe UI", 9, FontStyle.Bold),
+                Font      = FONT_BOLD9,
                 Padding   = new Point(14, 5)
             };
             this.Controls.Add(tabControl);
@@ -320,7 +326,7 @@ namespace OS_Lab02_FAT32
                 Location  = new Point(260, 13),
                 Width     = 700,
                 AutoSize  = false,
-                Font      = new Font("Segoe UI", 8),
+                Font      = FONT_SMALL8,
                 ForeColor = Color.FromArgb(80, 80, 80),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -556,9 +562,6 @@ namespace OS_Lab02_FAT32
                 for (int ci = 0; ci < procList.Count; ci++)
                     colorMap[procList[ci]] = palette[ci % palette.Length];
 
-                using Font fSmall = new Font("Segoe UI", 7.5f);
-                using Font fLabel = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-                using Font fAxis  = new Font("Segoe UI", 7.5f);
                 using Pen  pAxis  = new Pen(Color.FromArgb(100, 100, 100), 1.5f);
                 using Pen  pGrid  = new Pen(Color.FromArgb(220, 220, 220), 1) { DashStyle = DashStyle.Dot };
 
@@ -580,7 +583,7 @@ namespace OS_Lab02_FAT32
                     g.FillRectangle(new SolidBrush(rowBg), PAD, rowY, maxTime * PX, ROW_H);
 
                     // queue label on left
-                    g.DrawString(qid, fLabel, new SolidBrush(C_HEADER_BG),
+                    g.DrawString(qid, FONT_GANTT_LB, new SolidBrush(C_HEADER_BG),
                         new RectangleF(2, rowY + (ROW_H - 16) / 2, PAD - 4, 16),
                         new StringFormat { Alignment = StringAlignment.Far });
 
@@ -596,7 +599,7 @@ namespace OS_Lab02_FAT32
 
                         Rectangle rect = new Rectangle(bx, by, bw, BAR_H);
 
-                        Color c = colorMap.TryGetValue(log.processID, out Color mc) ? mc : Color.LightGray;
+                        Color c = colorMap.TryGetValue(log.processID, out Color mc) ? mc : Color.FromArgb(200, 200, 200);
 
                         // gradient fill
                         using (LinearGradientBrush gb = new LinearGradientBrush(
@@ -608,9 +611,9 @@ namespace OS_Lab02_FAT32
                         // process label centred
                         if (bw >= 16)
                         {
-                            SizeF ts = g.MeasureString(log.processID, fLabel);
+                            SizeF ts = g.MeasureString(log.processID, FONT_GANTT_LB);
                             if (ts.Width <= bw - 2)
-                                g.DrawString(log.processID, fLabel, Brushes.Black,
+                                g.DrawString(log.processID, FONT_GANTT_LB, Brushes.Black,
                                     bx + (bw - ts.Width) / 2, by + (BAR_H - ts.Height) / 2);
                         }
                     }
@@ -624,8 +627,8 @@ namespace OS_Lab02_FAT32
                 {
                     int tx = PAD + t * PX;
                     g.DrawLine(pAxis, tx, axisY, tx, axisY + 5);
-                    SizeF ts = g.MeasureString(t.ToString(), fAxis);
-                    g.DrawString(t.ToString(), fAxis, Brushes.Black, tx - ts.Width / 2, axisY + 7);
+                    SizeF ts = g.MeasureString(t.ToString(), FONT_GANTT_AX);
+                    g.DrawString(t.ToString(), FONT_GANTT_AX, Brushes.Black, tx - ts.Width / 2, axisY + 7);
                 }
             }
 
@@ -717,7 +720,7 @@ namespace OS_Lab02_FAT32
             {
                 BackColor   = C_HDR_GRID,
                 ForeColor   = Color.White,
-                Font        = new Font("Segoe UI", 9, FontStyle.Bold),
+                Font        = FONT_BOLD9,
                 Alignment   = DataGridViewContentAlignment.MiddleLeft,
                 Padding     = new Padding(4, 0, 0, 0)
             };
@@ -739,7 +742,7 @@ namespace OS_Lab02_FAT32
             {
                 BackColor   = C_HDR_GRID,
                 ForeColor   = Color.White,
-                Font        = new Font("Segoe UI", 9, FontStyle.Bold),
+                Font        = FONT_BOLD9,
                 Alignment   = DataGridViewContentAlignment.MiddleLeft,
                 Padding     = new Padding(4, 0, 0, 0)
             };
@@ -760,15 +763,15 @@ namespace OS_Lab02_FAT32
                 Location  = loc,
                 Width     = width,
                 Height    = 32,
-                Font      = new Font("Segoe UI", 9, FontStyle.Bold),
+                Font      = FONT_BOLD9,
                 BackColor = backColor,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor    = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 0;
-            btn.MouseEnter += (s, e) => ((Button)s!).BackColor = ControlPaint.Dark(backColor, 0.1f);
-            btn.MouseLeave += (s, e) => ((Button)s!).BackColor = backColor;
+            btn.MouseEnter += (s, e) => ((Button)s).BackColor = ControlPaint.Dark(backColor, 0.1f);
+            btn.MouseLeave += (s, e) => ((Button)s).BackColor = backColor;
             return btn;
         }
 
@@ -776,7 +779,7 @@ namespace OS_Lab02_FAT32
             new Label
             {
                 Text      = text,
-                Font      = new Font("Segoe UI", 9, FontStyle.Bold),
+                Font      = FONT_BOLD9,
                 ForeColor = Color.FromArgb(80, 80, 80),
                 AutoSize  = true,
                 Padding   = new Padding(0, 4, 0, 0)
