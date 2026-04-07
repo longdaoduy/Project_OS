@@ -18,7 +18,7 @@ namespace OS_Lab02_FAT32
         private Label lblFileInfo = null!;
         private DataGridView dgvFunction3 = null!;
 
-        // Control mới cho Tab 4
+        // Control cho Tab 4
         private Button btnRunSchedule = null!;
         private PictureBox picGantt = null!;
         private DataGridView dgvStats = null!;
@@ -26,7 +26,7 @@ namespace OS_Lab02_FAT32
         public MainForm()
         {
             this.Text = "Hệ Điều Hành - Lab 02 - Project FAT32 & Scheduling";
-            this.Size = new Size(850, 650);
+            this.Size = new Size(1000, 700);
             this.StartPosition = FormStartPosition.CenterScreen;
             InitializeUI();
         }
@@ -36,9 +36,9 @@ namespace OS_Lab02_FAT32
             // Panel trên cùng chứa ô nhập đĩa
             Panel topPanel = new Panel { Dock = DockStyle.Top, Height = 50 };
             topPanel.Controls.Add(new Label { Text = "Nhập ổ đĩa (VD: F:)", Location = new Point(10, 15), AutoSize = true });
-            txtDrive = new TextBox { Location = new Point(120, 12), Width = 50, Text = "F:" };
-            btnRead = new Button { Text = "Khởi tạo && Đọc đĩa", Location = new Point(180, 10), Width = 150 };
-            btnRead.Click += BtnRead_Click; // Đã bỏ dấu ? ở tham số hàm
+            txtDrive = new TextBox { Location = new Point(140, 12), Width = 50, Text = "F:" };
+            btnRead = new Button { Text = "Khởi tạo && Đọc đĩa", Location = new Point(200, 10), Width = 160, Font = new Font("Arial", 9, FontStyle.Bold), BackColor = Color.LightBlue };
+            btnRead.Click += BtnRead_Click;
             topPanel.Controls.Add(txtDrive);
             topPanel.Controls.Add(btnRead);
             this.Controls.Add(topPanel);
@@ -46,61 +46,101 @@ namespace OS_Lab02_FAT32
             // Tab Control chia trang
             tabControl = new TabControl { Dock = DockStyle.Fill };
             this.Controls.Add(tabControl);
-            tabControl.BringToFront(); // Đưa TabControl lên trước để không bị che tên Tab
+            tabControl.BringToFront();
 
             // ================= TAB 1: FUNCTION 1 =================
             TabPage tab1 = new TabPage("Function 1: Boot Sector");
-            dgvFunction1 = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, RowHeadersVisible = false, AllowUserToAddRows = false };
+            dgvFunction1 = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                Font = new Font("Courier New", 9)
+            };
             tab1.Controls.Add(dgvFunction1);
             tabControl.TabPages.Add(tab1);
 
-            // ================= TAB 2: FUNCTION 2 & 3 =================
-            TabPage tab2 = new TabPage("Function 2 & 3: File System");
-            SplitContainer split2 = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 200 };
-
-            GroupBox gbFunc2 = new GroupBox { Text = "Function 2: Danh sách file *.txt (Click vào file để xem chi tiết)", Dock = DockStyle.Fill };
-            dgvFunction2 = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, RowHeadersVisible = false, AllowUserToAddRows = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
+            // ================= TAB 2: FUNCTION 2 =================
+            TabPage tab2 = new TabPage("Function 2: Danh sách file *.txt");
+            GroupBox gbFunc2 = new GroupBox { Text = "Danh sách file *.txt trên đĩa (Click vào dòng để xem chi tiết ở Tab 3)", Dock = DockStyle.Fill };
+            dgvFunction2 = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                Font = new Font("Courier New", 9)
+            };
             dgvFunction2.CellClick += DgvFunction2_CellClick;
             gbFunc2.Controls.Add(dgvFunction2);
-            split2.Panel1.Controls.Add(gbFunc2);
-
-            GroupBox gbFunc3 = new GroupBox { Text = "Function 3: Chi tiết file & Thông tin tiến trình", Dock = DockStyle.Fill };
-            lblFileInfo = new Label { Dock = DockStyle.Top, Height = 50, Font = new Font("Arial", 9, FontStyle.Bold) };
-            dgvFunction3 = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, RowHeadersVisible = false, AllowUserToAddRows = false };
-            gbFunc3.Controls.Add(dgvFunction3);
-            gbFunc3.Controls.Add(lblFileInfo);
-            split2.Panel2.Controls.Add(gbFunc3);
-
-            tab2.Controls.Add(split2);
+            tab2.Controls.Add(gbFunc2);
             tabControl.TabPages.Add(tab2);
 
-            // ================= TAB 3: FUNCTION 4 (VẼ GANTT CHART) =================
-            TabPage tab3 = new TabPage("Function 4: CPU Scheduling Simulator");
+            // ================= TAB 3: FUNCTION 3 =================
+            TabPage tab3 = new TabPage("Function 3: Chi tiết file & Tiến trình");
+            GroupBox gbFunc3 = new GroupBox { Text = "Chi tiết file đã chọn & Bảng thông tin tiến trình", Dock = DockStyle.Fill };
+            lblFileInfo = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 70,
+                Font = new Font("Courier New", 9, FontStyle.Bold),
+                BackColor = Color.LightCyan,
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(6)
+            };
+            dgvFunction3 = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                Font = new Font("Courier New", 9)
+            };
+            gbFunc3.Controls.Add(dgvFunction3);
+            gbFunc3.Controls.Add(lblFileInfo);
+            tab3.Controls.Add(gbFunc3);
+            tabControl.TabPages.Add(tab3);
 
-            Panel topTab3 = new Panel { Dock = DockStyle.Top, Height = 40 };
-            btnRunSchedule = new Button { Text = "▶ Chạy Thuật Toán & Vẽ Biểu Đồ", Location = new Point(10, 5), Width = 250, Font = new Font("Arial", 9, FontStyle.Bold), BackColor = Color.LightGreen };
+            // ================= TAB 4: FUNCTION 4 (VẼ GANTT CHART) =================
+            TabPage tab4 = new TabPage("Function 4: CPU Scheduling Simulator");
+
+            Panel topTab4 = new Panel { Dock = DockStyle.Top, Height = 40 };
+            btnRunSchedule = new Button { Text = "▶ Chạy Thuật Toán & Vẽ Biểu Đồ", Location = new Point(10, 5), Width = 260, Font = new Font("Arial", 9, FontStyle.Bold), BackColor = Color.LightGreen };
             btnRunSchedule.Click += BtnRunSchedule_Click;
-            topTab3.Controls.Add(btnRunSchedule);
-            tab3.Controls.Add(topTab3);
+            topTab4.Controls.Add(btnRunSchedule);
+            tab4.Controls.Add(topTab4);
 
-            SplitContainer split3 = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 200 };
+            SplitContainer split4 = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 220 };
 
-            // Khu vực vẽ biểu đồ Gantt (Có thể cuộn ngang nếu thời gian quá dài)
-            GroupBox gbGantt = new GroupBox { Text = "Gantt Chart (Biểu đồ tiến trình)", Dock = DockStyle.Fill };
+            // Khu vực vẽ biểu đồ Gantt
+            GroupBox gbGantt = new GroupBox { Text = "Gantt Chart – CPU SCHEDULING DIAGRAM", Dock = DockStyle.Fill };
             Panel pnlGantt = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
             picGantt = new PictureBox { SizeMode = PictureBoxSizeMode.AutoSize, Location = new Point(0, 0) };
             pnlGantt.Controls.Add(picGantt);
             gbGantt.Controls.Add(pnlGantt);
-            split3.Panel1.Controls.Add(gbGantt);
+            split4.Panel1.Controls.Add(gbGantt);
 
             // Khu vực hiển thị bảng thống kê
-            GroupBox gbStats = new GroupBox { Text = "Process Statistics (Bảng thống kê)", Dock = DockStyle.Fill };
-            dgvStats = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, RowHeadersVisible = false, AllowUserToAddRows = false };
+            GroupBox gbStats = new GroupBox { Text = "PROCESS STATISTICS – Bảng thống kê", Dock = DockStyle.Fill };
+            dgvStats = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                Font = new Font("Courier New", 9)
+            };
             gbStats.Controls.Add(dgvStats);
-            split3.Panel2.Controls.Add(gbStats);
+            split4.Panel2.Controls.Add(gbStats);
 
-            tab3.Controls.Add(split3);
-            tabControl.TabPages.Add(tab3);
+            tab4.Controls.Add(split4);
+            tabControl.TabPages.Add(tab4);
         }
 
         private void BtnRead_Click(object sender, EventArgs e)
@@ -119,10 +159,13 @@ namespace OS_Lab02_FAT32
 
             try
             {
+                // Tab 1 – Function 1: Boot Sector
                 dgvFunction1.DataSource = reader.GetBootSectorInfo();
+                dgvFunction1.Columns["Property"].HeaderText = "Attribute";
+
+                // Tab 2 – Function 2: Danh sách file *.txt
                 reader.ScanForTxtFiles();
                 dgvFunction2.DataSource = reader.TxtFiles;
-                // Chỉ hiển thị các cột No., File Name, Full Path như Function 2 trong Lab2.cs
                 foreach (DataGridViewColumn col in dgvFunction2.Columns)
                     col.Visible = false;
                 dgvFunction2.Columns["No"].Visible = true;
@@ -131,7 +174,10 @@ namespace OS_Lab02_FAT32
                 dgvFunction2.Columns["No"].HeaderText = "No.";
                 dgvFunction2.Columns["Name"].HeaderText = "File Name";
                 dgvFunction2.Columns["FullPath"].HeaderText = "Full Path";
-                MessageBox.Show("Đọc đĩa thành công! Hãy sang Tab 'File System' để chọn file text.", "Thành công");
+
+                // Chuyển sang Tab 1 để người dùng xem Boot Sector ngay
+                tabControl.SelectedIndex = 0;
+                MessageBox.Show($"Đọc đĩa thành công! Tìm thấy {reader.TxtFiles.Count} file *.txt.\nHãy sang Tab 2 để chọn file.", "Thành công");
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Lỗi đọc đĩa"); }
         }
@@ -141,18 +187,18 @@ namespace OS_Lab02_FAT32
             if (e.RowIndex < 0 || reader == null) return;
             var selectedFile = reader.TxtFiles[e.RowIndex];
 
-            lblFileInfo.Text = $"Name: {selectedFile.Name}\n" +
-                               $"Date Created: {reader.ParseDate(selectedFile.CreationDate)}   " +
-                               $"Time Created: {reader.ParseTime(selectedFile.CreationTime)}   " +
-                               $"Total Size: {selectedFile.FileSize} bytes";
+            // Tab 3 – Function 3: Hiển thị thông tin file theo đúng format Lab2.cs
+            lblFileInfo.Text = $"  Name         : {selectedFile.Name}\r\n" +
+                               $"  Date Created : {reader.ParseDate(selectedFile.CreationDate)}    " +
+                               $"Time Created : {reader.ParseTime(selectedFile.CreationTime)}\r\n" +
+                               $"  Total Size   : {selectedFile.FileSize} bytes";
             try
             {
                 reader.ParseTxtFile(selectedFile);
 
-                // --- ĐOẠN CODE MỚI: GỘP PROCESS VÀ QUEUE ĐỂ HIỂN THỊ ---
+                // Gộp Process và Queue để hiển thị đúng bảng của Function 3
                 var displayData = reader.ParsedProcesses.Select(p =>
                 {
-                    // Tìm Queue tương ứng với Process hiện tại
                     var q = reader.ParsedQueues.FirstOrDefault(queue => queue.queueID == p.queueID);
                     return new
                     {
@@ -165,16 +211,16 @@ namespace OS_Lab02_FAT32
                     };
                 }).ToList();
 
-                // Đổ dữ liệu mới vào bảng
                 dgvFunction3.DataSource = displayData;
-
-                // Đổi tên các cột cho đẹp và đúng chuẩn yêu cầu
                 dgvFunction3.Columns["ProcessID"].HeaderText = "Process ID";
                 dgvFunction3.Columns["ArrivalTime"].HeaderText = "Arrival Time";
                 dgvFunction3.Columns["CPUBurstTime"].HeaderText = "CPU Burst Time";
                 dgvFunction3.Columns["PriorityQueueID"].HeaderText = "Priority Queue ID";
                 dgvFunction3.Columns["TimeSlice"].HeaderText = "Time Slice";
                 dgvFunction3.Columns["Algorithm"].HeaderText = "Scheduling Algorithm Name";
+
+                // Tự động chuyển sang Tab 3 để xem chi tiết
+                tabControl.SelectedIndex = 2;
             }
             catch (Exception ex)
             {
@@ -187,7 +233,7 @@ namespace OS_Lab02_FAT32
         {
             if (reader == null || reader.ParsedProcesses.Count == 0)
             {
-                MessageBox.Show("Vui lòng qua Tab 2, chọn một file *.txt hợp lệ trước khi chạy lập lịch!");
+                MessageBox.Show("Vui lòng sang Tab 2 chọn file *.txt, rồi sang Tab 3 xem chi tiết trước khi chạy lập lịch!");
                 return;
             }
 
