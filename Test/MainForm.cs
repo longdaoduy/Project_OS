@@ -18,6 +18,10 @@ namespace OS_Lab02_FAT32
         private Label lblFileInfo = null!;
         private DataGridView dgvFunction3 = null!;
 
+        // Control cho Tab 3 – nút chạy lập lịch inline
+        private Button btnRunScheduleTab3 = null!;
+        private RichTextBox rtbSchedulingResult = null!;
+
         // Control cho Tab 4
         private Button btnRunSchedule = null!;
         private PictureBox picGantt = null!;
@@ -83,6 +87,7 @@ namespace OS_Lab02_FAT32
             // ================= TAB 3: FUNCTION 3 =================
             TabPage tab3 = new TabPage("Function 3: Chi tiết file & Tiến trình");
             GroupBox gbFunc3 = new GroupBox { Text = "Chi tiết file đã chọn & Bảng thông tin tiến trình", Dock = DockStyle.Fill };
+
             lblFileInfo = new Label
             {
                 Dock = DockStyle.Top,
@@ -92,6 +97,27 @@ namespace OS_Lab02_FAT32
                 BorderStyle = BorderStyle.FixedSingle,
                 Padding = new Padding(6)
             };
+
+            Panel pnlRunBtn3 = new Panel { Dock = DockStyle.Top, Height = 40 };
+            btnRunScheduleTab3 = new Button
+            {
+                Text = "▶ Chạy Scheduling & Xem Kết Quả",
+                Location = new Point(10, 5),
+                Width = 270,
+                Font = new Font("Arial", 9, FontStyle.Bold),
+                BackColor = Color.LightGreen,
+                Enabled = false
+            };
+            btnRunScheduleTab3.Click += BtnRunScheduleTab3_Click;
+            pnlRunBtn3.Controls.Add(btnRunScheduleTab3);
+
+            SplitContainer split3 = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 200
+            };
+
             dgvFunction3 = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -101,7 +127,21 @@ namespace OS_Lab02_FAT32
                 AllowUserToAddRows = false,
                 Font = new Font("Courier New", 9)
             };
-            gbFunc3.Controls.Add(dgvFunction3);
+            split3.Panel1.Controls.Add(dgvFunction3);
+
+            rtbSchedulingResult = new RichTextBox
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                Font = new Font("Courier New", 10),
+                BackColor = Color.Black,
+                ForeColor = Color.LightGreen,
+                Text = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)"
+            };
+            split3.Panel2.Controls.Add(rtbSchedulingResult);
+
+            gbFunc3.Controls.Add(split3);
+            gbFunc3.Controls.Add(pnlRunBtn3);
             gbFunc3.Controls.Add(lblFileInfo);
             tab3.Controls.Add(gbFunc3);
             tabControl.TabPages.Add(tab3);
@@ -219,6 +259,10 @@ namespace OS_Lab02_FAT32
                 dgvFunction3.Columns["TimeSlice"].HeaderText = "Time Slice";
                 dgvFunction3.Columns["Algorithm"].HeaderText = "Scheduling Algorithm Name";
 
+                // Kích hoạt nút chạy lập lịch và reset vùng kết quả
+                btnRunScheduleTab3.Enabled = true;
+                rtbSchedulingResult.Text = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)";
+
                 // Tự động chuyển sang Tab 3 để xem chi tiết
                 tabControl.SelectedIndex = 2;
             }
@@ -226,7 +270,26 @@ namespace OS_Lab02_FAT32
             {
                 MessageBox.Show("Lỗi khi đọc file: " + ex.Message);
                 dgvFunction3.DataSource = null;
+                btnRunScheduleTab3.Enabled = false;
+                rtbSchedulingResult.Text = "(Kết quả lập lịch sẽ hiển thị ở đây sau khi nhấn nút Chạy Scheduling)";
             }
+        }
+
+        private void BtnRunScheduleTab3_Click(object sender, EventArgs e)
+        {
+            if (reader == null || reader.ParsedProcesses.Count == 0)
+            {
+                MessageBox.Show("Vui lòng chọn file *.txt từ Tab 2 trước!");
+                return;
+            }
+
+            // Tạo bản sao để không làm ảnh hưởng dữ liệu gốc (có thể chạy nhiều lần)
+            var processes = reader.ParsedProcesses.Select(p => new Process(p.processID, p.arrivalTime, p.burstTime, p.queueID)).ToList();
+            var queues = reader.ParsedQueues.Select(q => new Queue(q.queueID, q.timeSlice, q.schedulingPolicy)).ToList();
+
+            SchedulingResult scheduler = new SchedulingResult(processes, queues);
+            scheduler.RunScheduling();
+            rtbSchedulingResult.Text = scheduler.GenerateDiagramString();
         }
 
         private void BtnRunSchedule_Click(object sender, EventArgs e)
