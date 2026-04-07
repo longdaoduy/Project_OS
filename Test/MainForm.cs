@@ -45,12 +45,14 @@ namespace OS_Lab02_FAT32
         private Label       lblStatus       = null!;
         private DataGridView dgvFunction1   = null!;
         private DataGridView dgvFunction2   = null!;
+        private SplitContainer splitTab2   = null!;
         private Panel       pnlFileCard     = null!;
         private Label       lblFileName     = null!;
         private Label       lblFileDate     = null!;
         private Label       lblFileSize     = null!;
         private DataGridView dgvFunction3   = null!;
         private Button      btnRunSchedule  = null!;
+        private Button      btnRunScheduleTab2 = null!;
         private Label       lblQueueLegend  = null!;
         private Panel       pnlGanttScroll  = null!;
         private PictureBox  picGantt        = null!;
@@ -101,7 +103,7 @@ namespace OS_Lab02_FAT32
             Panel drivePanel = new Panel { Height = 64, Width = 430, Dock = DockStyle.Right, BackColor = Color.Transparent };
             Label lblDriveHint = new Label
             {
-                Text      = "Ổ đĩa:",
+                Text      = "Drive:",
                 ForeColor = Color.FromArgb(180, 200, 220),
                 Font      = FONT_UI,
                 Location  = new Point(10, 20),
@@ -118,7 +120,7 @@ namespace OS_Lab02_FAT32
                 BorderStyle = BorderStyle.FixedSingle,
                 TextAlign = HorizontalAlignment.Center
             };
-            btnRead = MakeButton("⚡  Đọc Đĩa", new Point(125, 13), 160, C_ACCENT);
+            btnRead = MakeButton("⚡  Read Drive", new Point(125, 13), 160, C_ACCENT);
             btnRead.Click += BtnRead_Click;
 
             lblStatus = new Label
@@ -147,7 +149,6 @@ namespace OS_Lab02_FAT32
 
             tabControl.TabPages.Add(BuildTab1());
             tabControl.TabPages.Add(BuildTab2());
-            tabControl.TabPages.Add(BuildTab3());
             tabControl.TabPages.Add(BuildTab4());
         }
 
@@ -162,7 +163,7 @@ namespace OS_Lab02_FAT32
 
             Label lbl = new Label
             {
-                Text      = "📀  Thông tin Boot Sector (FAT32)",
+                Text      = "📀  Boot Sector Info (FAT32)",
                 Font      = FONT_BOLD,
                 ForeColor = C_ACCENT,
                 Dock      = DockStyle.Top,
@@ -180,17 +181,27 @@ namespace OS_Lab02_FAT32
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        //  TAB 2 – FUNCTION 2: FILE LIST
+        //  TAB 2 – FUNCTION 2 + 3: FILE LIST & DETAILS
         // ══════════════════════════════════════════════════════════════════════
         private TabPage BuildTab2()
         {
-            TabPage tab = new TabPage("  ② Danh sách .txt  ") { BackColor = C_TAB_BG };
+            TabPage tab = new TabPage("  ② File List & Details  ") { BackColor = C_TAB_BG };
 
-            Panel card = MakeCard(DockStyle.Fill);
-
-            Label lbl = new Label
+            splitTab2 = new SplitContainer
             {
-                Text      = "📂  Danh sách file *.txt trên đĩa  —  Click vào dòng để xem chi tiết",
+                Dock             = DockStyle.Fill,
+                Orientation      = Orientation.Horizontal,
+                SplitterDistance = 350,
+                BackColor        = C_TAB_BG,
+                Panel2Collapsed  = true
+            };
+
+            // ── Panel1: file list ────────────────────────────────────────────
+            Panel listCard = MakeCard(DockStyle.Fill);
+
+            Label lblList = new Label
+            {
+                Text      = "📂  *.txt Files on Disk — Click a row to view details",
                 Font      = FONT_BOLD,
                 ForeColor = C_ACCENT,
                 Dock      = DockStyle.Top,
@@ -199,46 +210,37 @@ namespace OS_Lab02_FAT32
             };
 
             dgvFunction2 = MakeDgv();
-            dgvFunction2.Dock             = DockStyle.Fill;
-            dgvFunction2.SelectionMode    = DataGridViewSelectionMode.FullRowSelect;
-            dgvFunction2.CellClick       += DgvFunction2_CellClick;
+            dgvFunction2.Dock          = DockStyle.Fill;
+            dgvFunction2.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvFunction2.CellClick    += DgvFunction2_CellClick;
             dgvFunction2.SelectionChanged += (s, e) =>
             {
-                // highlight selected row
                 foreach (DataGridViewRow r in dgvFunction2.Rows)
                     r.DefaultCellStyle.BackColor = r.Selected ? C_ROW_SEL
                         : (r.Index % 2 == 0 ? Color.White : C_ROW_ALT);
             };
 
-            card.Controls.Add(dgvFunction2);
-            card.Controls.Add(lbl);
-            tab.Controls.Add(card);
-            return tab;
-        }
+            listCard.Controls.Add(dgvFunction2);
+            listCard.Controls.Add(lblList);
+            splitTab2.Panel1.Controls.Add(listCard);
+            splitTab2.Panel1.Padding = new Padding(6, 6, 6, 3);
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  TAB 3 – FUNCTION 3: FILE DETAIL + PROCESS TABLE
-        // ══════════════════════════════════════════════════════════════════════
-        private TabPage BuildTab3()
-        {
-            TabPage tab = new TabPage("  ③ Chi tiết file  ") { BackColor = C_TAB_BG };
-
-            // outer vertical split
-            SplitContainer split = new SplitContainer
+            // ── Panel2: file info + process table ────────────────────────────
+            SplitContainer splitDetails = new SplitContainer
             {
                 Dock             = DockStyle.Fill,
                 Orientation      = Orientation.Horizontal,
-                SplitterDistance = 115,
+                SplitterDistance = 130,
                 BackColor        = C_TAB_BG
             };
 
-            // ── top: file info card ──────────────────────────────────────────
+            // file info card
             Panel fileCard = MakeCard(DockStyle.Fill);
             pnlFileCard = fileCard;
 
             Label lblHdr = new Label
             {
-                Text      = "📄  Thông tin file đã chọn",
+                Text      = "📄  Selected File Info",
                 Font      = FONT_BOLD,
                 ForeColor = C_ACCENT,
                 Dock      = DockStyle.Top,
@@ -263,24 +265,24 @@ namespace OS_Lab02_FAT32
             lblFileDate = new Label { Font = FONT_MONO, AutoSize = true };
             lblFileSize = new Label { Font = FONT_MONO, AutoSize = true };
 
-            tbl.Controls.Add(MakeInfoCaption("Tên file :"),      0, 0);
-            tbl.Controls.Add(lblFileName,                         1, 0);
-            tbl.Controls.Add(MakeInfoCaption("Ngày tạo :"),      2, 0);
-            tbl.Controls.Add(lblFileDate,                         3, 0);
-            tbl.Controls.Add(MakeInfoCaption("Dung lượng :"),    0, 1);
-            tbl.Controls.Add(lblFileSize,                         1, 1);
+            tbl.Controls.Add(MakeInfoCaption("File Name:"), 0, 0);
+            tbl.Controls.Add(lblFileName,                   1, 0);
+            tbl.Controls.Add(MakeInfoCaption("Created:"),   2, 0);
+            tbl.Controls.Add(lblFileDate,                   3, 0);
+            tbl.Controls.Add(MakeInfoCaption("Size:"),      0, 1);
+            tbl.Controls.Add(lblFileSize,                   1, 1);
 
             fileCard.Controls.Add(tbl);
             fileCard.Controls.Add(lblHdr);
-            split.Panel1.Controls.Add(fileCard);
-            split.Panel1.Padding = new Padding(6, 6, 6, 3);
+            splitDetails.Panel1.Controls.Add(fileCard);
+            splitDetails.Panel1.Padding = new Padding(6, 3, 6, 3);
 
-            // ── bottom: process grid ─────────────────────────────────────────
+            // process table + run button
             Panel procCard = MakeCard(DockStyle.Fill);
 
             Label lblProcHdr = new Label
             {
-                Text      = "⚙  Bảng thông tin tiến trình (đọc từ file)",
+                Text      = "⚙  Process Information (from file)",
                 Font      = FONT_BOLD,
                 ForeColor = C_ACCENT,
                 Dock      = DockStyle.Top,
@@ -288,24 +290,31 @@ namespace OS_Lab02_FAT32
                 Padding   = new Padding(4, 4, 0, 0)
             };
 
+            btnRunScheduleTab2 = MakeButton("▶  Run Scheduling", new Point(0, 0), 200, C_OK);
+            btnRunScheduleTab2.Dock   = DockStyle.Bottom;
+            btnRunScheduleTab2.Height = 36;
+            btnRunScheduleTab2.Click += BtnRunSchedule_Click;
+
             dgvFunction3 = MakeDgv();
             dgvFunction3.Dock = DockStyle.Fill;
 
             procCard.Controls.Add(dgvFunction3);
+            procCard.Controls.Add(btnRunScheduleTab2);
             procCard.Controls.Add(lblProcHdr);
-            split.Panel2.Controls.Add(procCard);
-            split.Panel2.Padding = new Padding(6, 3, 6, 6);
+            splitDetails.Panel2.Controls.Add(procCard);
+            splitDetails.Panel2.Padding = new Padding(6, 3, 6, 6);
 
-            tab.Controls.Add(split);
+            splitTab2.Panel2.Controls.Add(splitDetails);
+            tab.Controls.Add(splitTab2);
             return tab;
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        //  TAB 4 – FUNCTION 4: GANTT CHART + STATS
+        //  TAB 3 – FUNCTION 4: GANTT CHART + STATS
         // ══════════════════════════════════════════════════════════════════════
         private TabPage BuildTab4()
         {
-            TabPage tab = new TabPage("  ④ CPU Scheduling  ") { BackColor = C_TAB_BG };
+            TabPage tab = new TabPage("  ③ CPU Scheduling  ") { BackColor = C_TAB_BG };
 
             // toolbar at top
             Panel toolbar = new Panel
@@ -318,12 +327,12 @@ namespace OS_Lab02_FAT32
             toolbar.Paint += (s, e) =>
                 e.Graphics.DrawLine(new Pen(C_GRID_LINE, 1), 0, toolbar.Height - 1, toolbar.Width, toolbar.Height - 1);
 
-            btnRunSchedule = MakeButton("▶  Chạy Lập Lịch & Vẽ Biểu Đồ", new Point(8, 8), 240, C_OK);
+            btnRunSchedule = MakeButton("▶  Run Scheduling & Draw Chart", new Point(8, 8), 260, C_OK);
             btnRunSchedule.Click += BtnRunSchedule_Click;
 
             lblQueueLegend = new Label
             {
-                Location  = new Point(260, 13),
+                Location  = new Point(278, 13),
                 Width     = 700,
                 AutoSize  = false,
                 Font      = FONT_SMALL8,
@@ -366,7 +375,7 @@ namespace OS_Lab02_FAT32
             Panel statsCard = MakeCard(DockStyle.Fill);
             Label lblStats = new Label
             {
-                Text      = "📋  Process Statistics – Bảng thống kê",
+                Text      = "📋  Process Statistics",
                 Font      = FONT_BOLD,
                 ForeColor = C_ACCENT,
                 Dock      = DockStyle.Top,
@@ -394,16 +403,16 @@ namespace OS_Lab02_FAT32
             string drive = txtDrive.Text.Trim().ToUpper();
             if (drive.Length != 2 || drive[1] != ':')
             {
-                SetStatus("Sai định dạng!", C_ERR);
-                MessageBox.Show("Sai định dạng ổ đĩa! Ví dụ: F:", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                SetStatus("Invalid format!", C_ERR);
+                MessageBox.Show("Invalid drive format! Example: F:", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             reader = new Fat32Reader(drive);
             if (!reader.IsOpen)
             {
-                SetStatus("Không mở được đĩa", C_ERR);
-                MessageBox.Show("Không thể mở đĩa!\nHãy chạy chương trình với quyền Administrator.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SetStatus("Cannot open disk", C_ERR);
+                MessageBox.Show("Cannot open disk!\nPlease run the program as Administrator.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -413,8 +422,8 @@ namespace OS_Lab02_FAT32
                 var bootInfo = reader.GetBootSectorInfo();
                 dgvFunction1.DataSource = bootInfo;
                 StyleDgv(dgvFunction1);
-                dgvFunction1.Columns["Property"].HeaderText = "Thuộc tính";
-                dgvFunction1.Columns["Value"].HeaderText    = "Giá trị";
+                dgvFunction1.Columns["Property"].HeaderText = "Property";
+                dgvFunction1.Columns["Value"].HeaderText    = "Value";
 
                 // Function 2 – file list
                 reader.ScanForTxtFiles();
@@ -427,23 +436,23 @@ namespace OS_Lab02_FAT32
                 dgvFunction2.Columns["FullPath"].Visible = true;
                 dgvFunction2.Columns["FileSize"].Visible = true;
 
-                dgvFunction2.Columns["No"].HeaderText       = "STT";
-                dgvFunction2.Columns["Name"].HeaderText     = "Tên file";
-                dgvFunction2.Columns["FullPath"].HeaderText = "Đường dẫn đầy đủ";
-                dgvFunction2.Columns["FileSize"].HeaderText = "Kích thước (bytes)";
+                dgvFunction2.Columns["No"].HeaderText       = "No.";
+                dgvFunction2.Columns["Name"].HeaderText     = "File Name";
+                dgvFunction2.Columns["FullPath"].HeaderText = "Full Path";
+                dgvFunction2.Columns["FileSize"].HeaderText = "Size (bytes)";
 
                 dgvFunction2.Columns["No"].Width = 50;
 
                 ApplyAlternatingRows(dgvFunction2);
 
                 tabControl.SelectedIndex = 0;
-                SetStatus($"✓ {reader.TxtFiles.Count} file .txt", C_OK);
-                MessageBox.Show($"Đọc đĩa {drive} thành công!\nTìm thấy {reader.TxtFiles.Count} file *.txt.\n\nChuyển sang tab ② để chọn file.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetStatus($"✓ {reader.TxtFiles.Count} .txt files", C_OK);
+                MessageBox.Show($"Successfully read disk {drive}!\nFound {reader.TxtFiles.Count} *.txt files.\n\nSwitch to tab ② to select a file.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                SetStatus("Lỗi!", C_ERR);
-                MessageBox.Show("Lỗi đọc đĩa:\n" + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SetStatus("Error!", C_ERR);
+                MessageBox.Show("Disk read error:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -453,7 +462,7 @@ namespace OS_Lab02_FAT32
 
             var f = reader.TxtFiles[e.RowIndex];
 
-            // Function 3 header card
+            // File info card
             lblFileName.Text = f.Name;
             lblFileDate.Text = $"{reader.ParseDate(f.CreationDate)}   {reader.ParseTime(f.CreationTime)}";
             lblFileSize.Text = $"{f.FileSize:N0} bytes";
@@ -483,14 +492,16 @@ namespace OS_Lab02_FAT32
                 dgvFunction3.Columns["CPUBurstTime"].HeaderText    = "CPU Burst Time";
                 dgvFunction3.Columns["PriorityQueueID"].HeaderText = "Queue ID";
                 dgvFunction3.Columns["TimeSlice"].HeaderText       = "Time Slice";
-                dgvFunction3.Columns["Algorithm"].HeaderText       = "Thuật toán";
+                dgvFunction3.Columns["Algorithm"].HeaderText       = "Algorithm";
                 ApplyAlternatingRows(dgvFunction3);
 
-                tabControl.SelectedIndex = 2;
+                // Show details panel
+                splitTab2.Panel2Collapsed  = false;
+                splitTab2.SplitterDistance = splitTab2.Height / 2;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi khi đọc/phân tích file:\n" + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error reading/parsing file:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 dgvFunction3.DataSource = null;
             }
         }
@@ -499,7 +510,7 @@ namespace OS_Lab02_FAT32
         {
             if (reader == null || reader.ParsedProcesses.Count == 0)
             {
-                MessageBox.Show("Vui lòng chọn file *.txt ở tab ② trước khi chạy lập lịch!", "Chú ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please select a *.txt file in tab ② before running scheduling!", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -514,7 +525,7 @@ namespace OS_Lab02_FAT32
             FillStatsTable(scheduler);
             BuildQueueLegend(scheduler);
 
-            tabControl.SelectedIndex = 3;
+            tabControl.SelectedIndex = 2;
         }
 
         // ══════════════════════════════════════════════════════════════════════
