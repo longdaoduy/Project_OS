@@ -225,7 +225,7 @@ namespace OS_Lab02_FAT32
         private int GetNextCluster(int currentCluster)
         {
             long fatStart = (long)_reservedSectors * _bytesPerSector;
-            long entryOffset = fatStart + currentCluster * 4; 
+            long entryOffset = fatStart + (long)currentCluster * 4; 
             byte[] buf = new byte[4];
             if (!ReadAt(entryOffset, buf, 4)) return -1;
             return BitConverter.ToInt32(buf, 0) & 0x0FFFFFFF; 

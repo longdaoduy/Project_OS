@@ -258,6 +258,10 @@ namespace OS_Lab02_FAT32
                 Padding     = new Padding(6, 0, 6, 6)
             };
 
+
+            // Đặt row tự điều chỉnh chiều cao theo nội dung để các control không bị lệch lên đỉnh
+            tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
             // Đặt 8 cột đầu tiên thành AutoSize để chúng ôm sát nội dung
             for (int i = 0; i < 8; i++)
             {
@@ -266,11 +270,12 @@ namespace OS_Lab02_FAT32
             // Cột thứ 9 chiếm toàn bộ không gian còn lại (Percent = 100)
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            // Khởi tạo các label hiển thị giá trị (thêm Padding để chữ ngang hàng với Caption)
-            lblFileName = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
-            lblFileDate = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
-            lblFileTime = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
-            lblFileSize = new Label { Font = FONT_MONO, AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+            // Khởi tạo các label hiển thị giá trị — dùng TextAlign.MiddleLeft để ngang hàng với caption
+            lblFileName = new Label { Font = FONT_MONO, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft };
+            lblFileDate = new Label { Font = FONT_MONO, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft };
+            lblFileTime = new Label { Font = FONT_MONO, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft };
+            lblFileSize = new Label { Font = FONT_MONO, AutoSize = true, TextAlign = ContentAlignment.MiddleLeft };
+
 
             // Khởi tạo Caption và thêm khoảng cách lề trái (Margin Left = 25) để không bị dính vào chữ phía trước
             var capName = MakeInfoCaption("File Name:");
@@ -441,6 +446,13 @@ namespace OS_Lab02_FAT32
                 dgvFunction1.Columns["Value"].HeaderText    = "Value";
 
                 // Function 2 – file list
+                // dgvFunction2 lives in a non-active tab whose Win32 handle has not been
+                // created yet.  Without a handle, DataGridView defers AutoGenerateColumns,
+                // so Columns["No"] etc. would return null and throw NullReferenceException.
+                // Forcing handle creation here ensures columns are generated immediately.
+                if (!dgvFunction2.IsHandleCreated)
+                    _ = dgvFunction2.Handle;
+
                 reader.ScanForTxtFiles();
                 dgvFunction2.DataSource = reader.TxtFiles;
                 StyleDgv(dgvFunction2);
@@ -512,8 +524,14 @@ namespace OS_Lab02_FAT32
                 ApplyAlternatingRows(dgvFunction3);
 
                 // Show details panel
-                splitTab2.Panel2Collapsed  = false;
-                splitTab2.SplitterDistance = splitTab2.Height / 2;
+                splitTab2.Panel2Collapsed = false;
+                // Guard against SplitterDistance being out of the valid range when the
+                // container hasn't been fully laid out yet (would throw ArgumentOutOfRangeException).
+                int half = splitTab2.Height / 2;
+                int minD = splitTab2.Panel1MinSize;
+                int maxD = splitTab2.Height - splitTab2.Panel2MinSize - splitTab2.SplitterWidth;
+                if (half >= minD && half <= maxD)
+                    splitTab2.SplitterDistance = half;
             }
             catch (Exception ex)
             {
@@ -809,7 +827,7 @@ namespace OS_Lab02_FAT32
                 Font      = FONT_BOLD9,
                 ForeColor = Color.FromArgb(80, 80, 80),
                 AutoSize  = true,
-                Padding   = new Padding(0, 4, 0, 0)
+                TextAlign = ContentAlignment.MiddleLeft
             };
 
         private void SetStatus(string msg, Color color)
