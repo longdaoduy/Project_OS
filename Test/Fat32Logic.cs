@@ -140,6 +140,12 @@ namespace OS_Lab02_FAT32
                     currentProcess.remainingTime -= executionTime;
                     currentQueue.remainingTime -= executionTime;
                 }
+                else // RR, FCFS, or any other policy
+                {
+                    currentTime += executionTime;
+                    currentProcess.remainingTime -= executionTime;
+                    currentQueue.remainingTime -= executionTime;
+                }
 
                 AddLog(prevTime, currentTime, currentQueue.queueID, currentProcess.processID);
 
@@ -225,7 +231,7 @@ namespace OS_Lab02_FAT32
         private int GetNextCluster(int currentCluster)
         {
             long fatStart = (long)_reservedSectors * _bytesPerSector;
-            long entryOffset = fatStart + currentCluster * 4; 
+            long entryOffset = fatStart + (long)currentCluster * 4; 
             byte[] buf = new byte[4];
             if (!ReadAt(entryOffset, buf, 4)) return -1;
             return BitConverter.ToInt32(buf, 0) & 0x0FFFFFFF; 

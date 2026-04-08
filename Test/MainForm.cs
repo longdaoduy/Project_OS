@@ -441,6 +441,13 @@ namespace OS_Lab02_FAT32
                 dgvFunction1.Columns["Value"].HeaderText    = "Value";
 
                 // Function 2 – file list
+                // dgvFunction2 lives in a non-active tab whose Win32 handle has not been
+                // created yet.  Without a handle, DataGridView defers AutoGenerateColumns,
+                // so Columns["No"] etc. would return null and throw NullReferenceException.
+                // Forcing handle creation here ensures columns are generated immediately.
+                if (!dgvFunction2.IsHandleCreated)
+                    _ = dgvFunction2.Handle;
+
                 reader.ScanForTxtFiles();
                 dgvFunction2.DataSource = reader.TxtFiles;
                 StyleDgv(dgvFunction2);
@@ -512,8 +519,14 @@ namespace OS_Lab02_FAT32
                 ApplyAlternatingRows(dgvFunction3);
 
                 // Show details panel
-                splitTab2.Panel2Collapsed  = false;
-                splitTab2.SplitterDistance = splitTab2.Height / 2;
+                splitTab2.Panel2Collapsed = false;
+                // Guard against SplitterDistance being out of the valid range when the
+                // container hasn't been fully laid out yet (would throw ArgumentOutOfRangeException).
+                int half = splitTab2.Height / 2;
+                int minD = splitTab2.Panel1MinSize;
+                int maxD = splitTab2.Height - splitTab2.Panel2MinSize - splitTab2.SplitterWidth;
+                if (half >= minD && half <= maxD)
+                    splitTab2.SplitterDistance = half;
             }
             catch (Exception ex)
             {
