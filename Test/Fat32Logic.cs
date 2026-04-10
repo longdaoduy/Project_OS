@@ -246,6 +246,20 @@ namespace OS_Lab02_FAT32
             return data.ToArray();
         }
 
+        private int GetRootDirectorySectors()
+        {
+            int cluster = _rootCluster;
+            int clusterCount = 0;
+
+            while (cluster >= 2 && cluster < 0x0FFFFFF8)
+            {
+                clusterCount++;
+                cluster = GetNextCluster(cluster);
+            }
+
+            return clusterCount * _sectorsPerCluster;
+        }
+
         private string LongFileNamePath(byte[] entry)
         {
             int[] offsets = { 1, 3, 5, 7, 9, 14, 16, 18, 20, 22, 24, 28, 30 };
@@ -289,8 +303,7 @@ namespace OS_Lab02_FAT32
             _totalSectors = BitConverter.ToInt32(bootSector, 32);
             _rootCluster = BitConverter.ToInt32(bootSector, 44);
 
-            short rdetEntries = BitConverter.ToInt16(bootSector, 17);
-            int rdetSectors = (rdetEntries * 32 + _bytesPerSector - 1) / _bytesPerSector;
+            int rdetSectors = GetRootDirectorySectors();
 
             return new List<BootSectorProperty>
             {
