@@ -367,6 +367,11 @@ namespace OS_Lab02_FAT32
 
                 if ((attr & 0x10) != 0) // thư mục con
                 {
+                    if (fullName.Equals("$RECYCLE.BIN", StringComparison.OrdinalIgnoreCase) || 
+                        fullName.Equals("System Volume Information", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue; // Không đệ quy vào các thư mục này
+                    }
                     ScanDirectory(firstCluster, path + fullName + "\\");
                 }
                 else if (ext3.ToLower() == "txt") // file .txt
