@@ -248,15 +248,17 @@ namespace OS_Lab02_FAT32
 
         private int GetRootDirectorySectors()
         {
-            int cluster = _rootCluster;
-            int clusterCount = 0;
-
+            int cluster = _rootCluster; // Cluster bắt đầu của Root Directory (BPB_RootClus)
+            int clusterCount = 0; // Biến đếm số cluster thuộc RDET
+            // - cluster >= 2: bỏ qua cluster reserved (0 và 1)
+            // - cluster < 0x0FFFFFF8: chưa gặp EOF (End Of File) trong FAT32
             while (cluster >= 2 && cluster < 0x0FFFFFF8)
             {
                 clusterCount++;
                 cluster = GetNextCluster(cluster);
             }
-
+            // Tổng số sector của RDET
+            // = số cluster * số sector trên mỗi cluster
             return clusterCount * _sectorsPerCluster;
         }
 
@@ -395,7 +397,7 @@ namespace OS_Lab02_FAT32
             ParsedProcesses.Clear();
             ParsedQueues.Clear();
 
-            // Đọc và phân tích nội dung file y hệt Lab2.cs
+            // Đọc và phân tích nội dung file
             byte[] fileData = ReadCluster(file.FirstCluster);
             string content = Encoding.ASCII.GetString(fileData, 0, (int)file.FileSize);
             string[] lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
